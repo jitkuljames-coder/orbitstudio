@@ -1,0 +1,3285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit Studio — 3D exterior property scans</title>
+<meta name="description" content="Orbit Studio makes 3D exterior property scans, delivered as a browser viewer you can embed in any listing. Based in Breda, the Netherlands.">
+<meta name="theme-color" content="#FBF4E7">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Inter:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   1. BRAND TOKENS  —  change these first
+   ============================================================ */
+:root{
+  /* colour */
+  --paper:        #FBF4E7;   /* main surface */
+  --paper-2:      #F2E7D3;   /* alt surface  */
+  --paper-3:      #E5D6BC;   /* borders / dividers */
+  --ink:          #131211;   /* text + dark sections */
+  --ink-soft:     #6E675D;   /* secondary text */
+  --accent:       #F0630A;   /* primary accent */
+  --gold:         #D5B476;   /* logo gold — used for accent words */
+  --accent-2:     #FFC63C;   /* secondary accent */
+  --accent-3:     #C89BFF;   /* tertiary (gradient only) */
+  --accent-4:     #6E8BFF;   /* tertiary (gradient only) */
+  --on-dark:      #F7F1E6;
+
+  /* type */
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'DM Mono', ui-monospace, monospace;
+
+  /* radius */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 18px;
+
+  /* motion */
+  --ease:      cubic-bezier(.4,0,.2,1);
+  --ease-out:  cubic-bezier(.16,1,.3,1);
+  --dur-micro: 180ms;
+  --dur-enter: 720ms;
+
+  /* layout */
+  --pad: clamp(20px, 4vw, 64px);
+  --maxw: 1440px;
+}
+
+/* ============================================================
+   2. BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+section[id],[id]{scroll-margin-top:92px}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:16px;
+  line-height:1.5;
+  letter-spacing:-0.01em;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  overflow-x:clip;
+}
+img,video{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+
+h1,h2,h3{margin:0;font-family:var(--font-display);font-weight:500;line-height:.95;letter-spacing:-0.03em}
+p{margin:0}
+
+.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--pad)}
+
+/* type roles */
+.eyebrow{
+  font-family:var(--font-mono);font-size:12px;font-weight:400;
+  text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft);
+}
+.h-hero{font-size:clamp(2rem,6.2vw,6.8rem)}
+.h-sec {font-size:clamp(2.1rem,5vw,4.1rem)}
+.h-sub {font-family:var(--font-body);font-weight:500;font-size:clamp(1.15rem,1.8vw,1.6rem);line-height:1.2;letter-spacing:-0.02em}
+.body-lg{font-size:clamp(1rem,1.15vw,1.125rem);line-height:1.55;color:var(--ink-soft)}
+.accentword{color:var(--gold)}
+/* the "Arriving late 2026" line: larger and deeper than a normal eyebrow */
+.eyebrow.accentword{font-size:15px;font-weight:500;
+  color:color-mix(in srgb,var(--gold) 62%,var(--ink))}
+
+/* section rhythm */
+section{position:relative}
+.pad-y{padding-block:clamp(80px,11vw,170px)}
+
+/* ============================================================
+   3. SHARED PIECES
+   ============================================================ */
+
+/* --- button --- */
+.btn{
+  position:relative;display:inline-flex;align-items:center;gap:10px;
+  height:50px;padding:0 24px;border-radius:var(--r-sm);
+  font-family:var(--font-body);font-weight:500;font-size:14px;letter-spacing:-0.01em;
+  overflow:hidden;isolation:isolate;
+  transition:color var(--dur-micro) var(--ease),transform 420ms var(--ease-out);
+}
+.btn::after{
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:var(--accent);
+  transform:translateY(101%);
+  transition:transform 420ms var(--ease-out);
+}
+.btn:hover::after,.btn:focus-visible::after{transform:translateY(0)}
+.btn--dark{background:var(--ink);color:var(--on-dark)}
+.btn--dark:hover{color:#fff}
+.btn--paper{background:var(--paper);color:var(--ink)}
+.btn--paper:hover{color:#fff}
+.btn--line{border:1px solid currentColor}
+.btn--line:hover{color:var(--paper);border-color:var(--accent)}
+.btn .arw{transition:transform 420ms var(--ease-out)}
+.btn:hover .arw{transform:translateX(4px)}
+
+/* --- media placeholder ---
+   Drop an <img> or <video> inside .media and it takes over.
+   Without one you get the warm gradient block + label. */
+.media{
+  position:relative;overflow:hidden;border-radius:var(--r-lg);
+  background:
+    radial-gradient(120% 100% at 18% 8%,  #FFD79A 0%, transparent 55%),
+    radial-gradient(110% 90%  at 88% 26%, var(--accent-2) 0%, transparent 52%),
+    radial-gradient(130% 120% at 62% 96%, var(--accent) 0%, transparent 58%),
+    linear-gradient(160deg,#FFE9C4,#E7B37A 60%,#8C5A2B);
+  isolation:isolate;
+}
+.media > img,.media > video{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+}
+.hero__bg .media > img{object-position:50% 46%}
+.media::after{ /* grain */
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+.media__label{
+  position:absolute;left:14px;bottom:14px;z-index:2;
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:#fff;mix-blend-mode:difference;opacity:.8;
+}
+.media:has(img) .media__label,
+.media:has(video) .media__label{display:none}
+.media--fit{background:#000}
+.media--fit > video{object-fit:contain}
+
+/* --- animated spectrum gradient (the brand motif) --- */
+.spectrum{position:absolute;inset:-30%;pointer-events:none;filter:blur(48px);opacity:.9}
+.spectrum span{position:absolute;border-radius:50%;mix-blend-mode:screen}
+.spectrum span:nth-child(1){inset:12% 44% 40% 8%;  background:var(--accent);      animation:drift1 19s var(--ease) infinite alternate}
+.spectrum span:nth-child(2){inset:30% 10% 18% 46%; background:var(--accent-2);    animation:drift2 23s var(--ease) infinite alternate}
+.spectrum span:nth-child(3){inset:48% 30% 6%  22%; background:var(--accent-3);    animation:drift3 27s var(--ease) infinite alternate}
+.spectrum span:nth-child(4){inset:4%  22% 56% 34%; background:var(--accent-4);    animation:drift1 31s var(--ease) infinite alternate-reverse}
+@keyframes drift1{to{transform:translate3d(9%,-7%,0) scale(1.18)}}
+@keyframes drift2{to{transform:translate3d(-11%,6%,0) scale(1.12)}}
+@keyframes drift3{to{transform:translate3d(6%,10%,0) scale(1.22)}}
+
+/* --- reveal (base state is visible; JS adds the offset) --- */
+.reveal{
+  transition:opacity var(--dur-enter) var(--ease-out),transform var(--dur-enter) var(--ease-out);
+  transition-delay:calc(var(--i,0) * 70ms);
+}
+.reveal.is-hidden{opacity:0;transform:translateY(30px)}
+
+/* --- masked line reveal --- */
+.lines .line{display:block;padding-bottom:.14em;margin-bottom:-.14em;clip-path:inset(0 -30%)}
+.lines .line > span{display:block;transition:transform 1000ms var(--ease-out);transition-delay:calc(var(--i,0) * 90ms)}
+.lines.is-hidden .line > span{transform:translateY(105%)}
+
+/* ============================================================
+   4. HEADER
+   ============================================================ */
+.hdr{
+  position:fixed;inset:0 0 auto;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  padding:18px var(--pad);
+  color:var(--on-dark);
+  transition:background 500ms var(--ease),color 500ms var(--ease),border-color 500ms var(--ease);
+  border-bottom:1px solid transparent;
+}
+.hdr.is-solid{background:var(--paper);color:var(--ink);border-bottom-color:var(--paper-3)}
+
+/* --- ISLAND HEADER -------------------------------------------
+   Past the first screen the bar breaks apart into three floating
+   pills: logo, nav, action. Toggled by .is-island from the JS. */
+.hdr{top:0;transition:background 500ms var(--ease),color 500ms var(--ease),
+  border-color 500ms var(--ease),top 600ms var(--ease-out),padding 600ms var(--ease-out)}
+.hdr.is-island{
+  top:12px;padding:0 var(--pad);
+  background:transparent;border-bottom-color:transparent;
+  pointer-events:none;
+}
+.hdr.is-island > *{pointer-events:auto}
+.hdr .logo,.hdr .nav,.hdr .hdr__right{
+  border-radius:999px;
+  white-space:nowrap;
+  transition:background 600ms var(--ease-out),box-shadow 600ms var(--ease-out),
+             padding 600ms var(--ease-out),color 600ms var(--ease-out);
+}
+.hdr.is-island .logo,
+.hdr.is-island .nav{
+  color:var(--on-dark);
+  background:rgba(19,18,17,.86);
+  -webkit-backdrop-filter:blur(20px) saturate(1.25);
+  backdrop-filter:blur(20px) saturate(1.25);
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.10);
+}
+.hdr.is-island .logo{padding:7px 20px 7px 8px}
+.hdr.is-island .nav{padding:13px 24px}
+/* stage two: the nav pill wraps itself up into the round button */
+.hdr .nav{overflow:hidden;max-width:640px;
+  transition:background 600ms var(--ease-out),box-shadow 600ms var(--ease-out),
+             padding 560ms var(--ease-out),color 600ms var(--ease-out),
+             max-width 560ms var(--ease-out),opacity 300ms var(--ease),
+             transform 560ms var(--ease-out)}
+.hdr.is-compact .nav{max-width:0;padding-inline:0;opacity:0;
+  transform:scale(.86);pointer-events:none}
+.hdr.is-island .hdr__right{background:none;box-shadow:none;padding:0;gap:10px}
+.hdr.is-island .btn--paper{background:var(--gold);color:var(--ink);
+  height:46px;padding:0 24px;border-radius:999px;
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.45)}
+.hdr.is-island .burger{
+  color:var(--on-dark);border-color:transparent;border-radius:999px;
+  width:46px;height:46px;
+  background:rgba(19,18,17,.86);
+  -webkit-backdrop-filter:blur(20px) saturate(1.25);
+  backdrop-filter:blur(20px) saturate(1.25);
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.10);
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .hdr.is-island .burger{background:rgba(19,18,17,.94)}
+}
+
+/* the nav collapses into its own round island beside the action */
+.hdr__right{position:relative}
+.isle-btn{
+  display:grid;width:0;height:46px;flex:none;place-items:center;overflow:hidden;
+  border-radius:999px;color:var(--on-dark);
+  background:transparent;box-shadow:none;opacity:0;pointer-events:none;
+  transform:scale(.5) rotate(-45deg);
+  -webkit-backdrop-filter:blur(20px) saturate(1.25);
+  backdrop-filter:blur(20px) saturate(1.25);
+  transition:width 520ms var(--ease-out),opacity 320ms var(--ease),
+             transform 520ms var(--ease-out),background 400ms var(--ease),
+             box-shadow 400ms var(--ease);
+}
+.hdr.is-island.is-compact .isle-btn{
+  width:46px;opacity:1;pointer-events:auto;transform:none;
+  background:rgba(19,18,17,.86);
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.10);
+}
+.isle-btn i{display:block;width:17px;height:1.6px;background:currentColor;position:relative;
+  transition:transform 300ms var(--ease)}
+.isle-btn i::before,.isle-btn i::after{content:"";position:absolute;left:0;width:17px;height:1.6px;
+  background:currentColor;transition:transform 300ms var(--ease),opacity 300ms var(--ease)}
+.isle-btn i::before{top:-5px}
+.isle-btn i::after{top:5px}
+body.isle-open .isle-btn i{transform:rotate(45deg)}
+body.isle-open .isle-btn i::before{transform:translateY(5px) rotate(-90deg)}
+body.isle-open .isle-btn i::after{opacity:0}
+
+.isle-menu{
+  position:absolute;top:calc(100% + 12px);right:0;z-index:2;
+  display:flex;flex-direction:column;min-width:210px;padding:10px;
+  border-radius:22px;color:var(--on-dark);
+  background:rgba(19,18,17,.92);
+  -webkit-backdrop-filter:blur(20px) saturate(1.25);
+  backdrop-filter:blur(20px) saturate(1.25);
+  box-shadow:0 22px 50px -20px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.10);
+  opacity:0;transform:translateY(-10px) scale(.97);transform-origin:100% 0;pointer-events:none;
+  transition:opacity 320ms var(--ease-out),transform 320ms var(--ease-out);
+}
+.hdr:not(.is-compact) .isle-menu{display:none}
+body.isle-open .isle-menu{opacity:1;transform:none;pointer-events:auto}
+.isle-menu a{padding:11px 15px;border-radius:14px;font-size:14px;font-weight:500;
+  transition:background 240ms var(--ease)}
+.isle-menu a:hover{background:rgba(255,255,255,.10)}
+
+/* label swap on the action pill */
+.lbl--island{display:none}
+.hdr.is-island .lbl--bar{display:none}
+.hdr.is-island .lbl--island{display:inline}
+.logo{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:-0.04em}
+.logo .mark{width:30px;height:30px;flex:none;object-fit:contain;display:block}
+.nav{display:flex;gap:30px;font-size:14px;font-weight:500}
+.nav a{position:relative;padding-block:4px}
+.nav a::after{content:"";position:absolute;left:0;bottom:0;width:100%;height:1px;background:currentColor;
+  transform:scaleX(0);transform-origin:right;transition:transform 380ms var(--ease-out)}
+.nav a:hover::after{transform:scaleX(1);transform-origin:left}
+.hdr__right{display:flex;align-items:center;gap:14px}
+.burger{display:none;width:42px;height:42px;place-items:center;border:1px solid currentColor;border-radius:var(--r-sm)}
+.burger i{display:block;width:16px;height:1.5px;background:currentColor;position:relative;transition:transform 300ms var(--ease)}
+.burger i::before,.burger i::after{content:"";position:absolute;left:0;width:16px;height:1.5px;background:currentColor;transition:transform 300ms var(--ease)}
+.burger i::before{top:-5px}.burger i::after{top:5px}
+body.menu-open .burger i{transform:rotate(45deg)}
+body.menu-open .burger i::before{transform:translateY(5px) rotate(-90deg)}
+body.menu-open .burger i::after{transform:translateY(-5px) rotate(-90deg);opacity:0}
+
+.menu{
+  position:fixed;inset:0;z-index:55;background:rgba(19,18,17,.62);color:var(--on-dark);
+  -webkit-backdrop-filter:blur(28px) saturate(1.25) brightness(.78);
+  backdrop-filter:blur(28px) saturate(1.25) brightness(.78);
+  display:flex;flex-direction:column;justify-content:center;gap:6px;padding:0 var(--pad);
+  clip-path:inset(0 0 100% 0);
+  visibility:hidden;
+  /* closing: links exit first, then the panel wipes back up */
+  transition:clip-path 620ms var(--ease-out) 260ms, visibility 0s linear 880ms;
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .menu{background:rgba(19,18,17,.94)}
+}
+body.menu-open{overflow:hidden}
+body.menu-open .menu{clip-path:inset(0 0 0 0);visibility:visible;
+  transition:clip-path 700ms var(--ease-out) 0s, visibility 0s linear 0s}
+.menu a{font-family:var(--font-display);font-size:clamp(2rem,9vw,4rem);line-height:1.05;letter-spacing:-0.04em;
+  opacity:0;transform:translateY(24px);
+  transition:opacity 300ms var(--ease-out),transform 300ms var(--ease-out);
+  transition-delay:calc((6 - var(--i)) * 55ms)}
+body.menu-open .menu a{opacity:1;transform:none;
+  transition:opacity 500ms var(--ease-out),transform 500ms var(--ease-out);
+  transition-delay:calc(180ms + var(--i) * 60ms)}
+
+@media (prefers-reduced-motion:reduce){
+  .menu,.menu a,body.menu-open .menu,body.menu-open .menu a{transition-duration:1ms;transition-delay:0s}
+}
+
+/* ============================================================
+   5. HERO
+   ============================================================ */
+.hero{position:relative;height:100svh;min-height:620px;overflow:hidden;color:var(--on-dark);background:var(--ink)}
+.hero__bg{position:absolute;inset:0;will-change:transform}
+.hero__bg .media{position:absolute;inset:0;border-radius:0}
+.hero__scrim{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(19,18,17,.62) 0%,rgba(19,18,17,.18) 34%,rgba(19,18,17,.10) 55%,rgba(19,18,17,.76) 100%)}
+.hero__inner{
+  position:relative;z-index:3;height:100%;max-width:var(--maxw);margin-inline:auto;
+  padding:0 var(--pad) clamp(34px,6vh,70px);
+  display:flex;flex-direction:column;justify-content:flex-end;gap:22px;
+  will-change:transform,opacity;
+  pointer-events:none;
+}
+.hero__inner a,.hero__inner button,.hero__inner input{pointer-events:auto}
+.hero__copy{
+  position:absolute;right:var(--pad);
+  left:calc(50% - 50vw + var(--pad));      /* same left edge as the lede below */
+  top:auto;
+  bottom:calc(100% - var(--gy1) + 20px);   /* sits just above the upper grid line */
+  max-width:min(64vw,1100px);
+}
+.hero h1{margin-top:10px}
+.hero__lede{
+  /* fills the grid cell under the upper line, as frosted glass so the
+     copy reads cleanly whatever the footage behind it is doing */
+  position:absolute;left:0;right:auto;
+  top:var(--gy1);bottom:calc(100% - var(--gy2));
+  width:var(--gx1);
+  padding:26px var(--pad);
+  background:linear-gradient(180deg, rgba(19,18,17,.26) 0%, rgba(19,18,17,.46) 100%);
+  -webkit-backdrop-filter:blur(20px) saturate(1.25) brightness(.82);
+  backdrop-filter:blur(20px) saturate(1.25) brightness(.82);
+  box-shadow:
+    inset -1px 0 0 var(--grid-line),
+    inset 0 -1px 0 var(--grid-line);
+}
+.hero__sub strong{
+  display:block;margin-bottom:8px;
+  font-family:var(--font-display);font-weight:600;
+  font-size:1.45em;line-height:1.05;letter-spacing:-.015em;
+}
+.hero__sub{max-width:44ch;color:color-mix(in srgb,var(--on-dark) 90%,transparent);font-weight:500;font-size:clamp(1.1rem,1.6vw,1.4rem);line-height:1.45}
+.hero__foot{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:26px;margin-top:12px}
+
+/* --- hero grid overlay ---------------------------------------
+   Move the lines by changing these four values. The model box and
+   the floating readouts are anchored to the same variables, so the
+   whole composition stays locked together. */
+.hero{
+  --gx1: 67vw;  /* left vertical line   */
+  --gx2: 85vw;  /* right vertical line  */
+  /* horizontals derive from the 18vw gap between the verticals, so the
+     model cell is a true square, centred on the same 50% line as before */
+  --gsize: 18vw;
+  --gbottom: 88%;                          /* where the cell's floor sits  */
+  --gy1: calc(var(--gbottom) - var(--gsize));  /* upper horizontal line*/
+  --gy2: var(--gbottom);                       /* lower horizontal line*/
+  --grid-line: rgba(255,255,255,.34);
+  /* everything that contracts scales about the centre of the model box,
+     so the grid stays wrapped around it instead of drifting off */
+  --zoom-x: calc((var(--gx1) + var(--gx2)) / 2);
+  --zoom-y: calc((var(--gy1) + var(--gy2)) / 2);
+}
+.hero__grid{position:absolute;inset:0;z-index:2;pointer-events:none;
+  transform-origin:var(--zoom-x) var(--zoom-y);will-change:transform}
+/* holds the readouts so they scale with the grid, sharing its box and origin */
+.hero__stage{position:absolute;inset:0;z-index:4;pointer-events:none;
+  transform-origin:var(--zoom-x) var(--zoom-y);will-change:transform}
+.hero__grid i{position:absolute;background:var(--grid-line)}
+.hero__grid i.v{top:0;bottom:0;width:1px}
+.hero__grid i.h{left:0;right:0;height:1px}
+.hero__grid i.v1{left:var(--gx1)}
+.hero__grid i.v2{left:var(--gx2)}
+.hero__grid i.h1{top:var(--gy1)}
+.hero__grid i.h2{top:var(--gy2)}
+
+/* --- 3D model slot -------------------------------------------
+   Drop an <iframe>, <canvas>, <model-viewer> or <video> inside
+   #model-slot and it fills the cell. The orange block is only the
+   placeholder you see until then. */
+.hero__model{
+  position:absolute;z-index:4;overflow:hidden;
+  left:var(--gx1);right:calc(100% - var(--gx2));
+  top:var(--gy1);bottom:calc(100% - var(--gy2));
+  border-radius:0;
+  pointer-events:auto;
+  transform-origin:50% 50%;   /* shrinks into its own centre */
+  will-change:transform;
+  /* frosted glass: the town behind stays readable through the blur, so the
+     panel sits on the photo instead of punching a hole in it */
+  background:
+    radial-gradient(58% 50% at 50% 60%, rgba(240,99,10,.18) 0%, rgba(240,99,10,0) 72%),
+    radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 62%),
+    linear-gradient(180deg, rgba(19,18,17,.28) 0%, rgba(19,18,17,.50) 100%);
+  -webkit-backdrop-filter:blur(26px) saturate(1.3) brightness(.8);
+  backdrop-filter:blur(26px) saturate(1.3) brightness(.8);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.30),
+    inset 0 1px 0 rgba(255,255,255,.16),
+    inset 0 -60px 80px -60px rgba(0,0,0,.55),
+    0 40px 90px -40px rgba(0,0,0,.6);
+}
+/* corner ticks — same drafting language as the hero grid */
+.hero__model::before{
+  content:"";position:absolute;inset:12px;z-index:3;pointer-events:none;
+  --tick:rgba(255,255,255,.55);--tl:12px;
+  background:
+    linear-gradient(var(--tick),var(--tick))   0%   0%/var(--tl) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick))   0%   0%/1px var(--tl) no-repeat,
+    linear-gradient(var(--tick),var(--tick)) 100%   0%/var(--tl) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick)) 100%   0%/1px var(--tl) no-repeat,
+    linear-gradient(var(--tick),var(--tick))   0% 100%/var(--tl) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick))   0% 100%/1px var(--tl) no-repeat,
+    linear-gradient(var(--tick),var(--tick)) 100% 100%/var(--tl) 1px no-repeat,
+    linear-gradient(var(--tick),var(--tick)) 100% 100%/1px var(--tl) no-repeat;
+}
+.hero__model > *{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
+.hero__model-vid{
+  z-index:0;pointer-events:none;display:block;background:transparent;
+  object-fit:cover;object-position:50% 50%;
+  transform:scale(1.34);               /* fills the cell instead of floating in it */
+  mix-blend-mode:screen;               /* the black field drops out of the panel   */
+  -webkit-mask-image:radial-gradient(96% 90% at 50% 52%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
+          mask-image:radial-gradient(96% 90% at 50% 52%, #000 42%, rgba(0,0,0,.55) 72%, transparent 100%);
+}
+.hero__model::after{ /* grain */
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.12;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+.hero__model .media__label{mix-blend-mode:normal;color:rgba(255,255,255,.9)}
+.hero__model:has(iframe) .media__label,
+.hero__model:has(canvas) .media__label,
+.hero__model:has(video)  .media__label,
+.hero__model:has(model-viewer) .media__label{display:none}
+
+.scrollcue{display:flex;align-items:center;gap:10px;font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.7}
+.scrollcue i{display:block;width:1px;height:34px;background:currentColor;transform-origin:top;animation:cue 2.2s var(--ease) infinite}
+@keyframes cue{0%{transform:scaleY(0)}45%{transform:scaleY(1)}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* ============================================================
+   6. FEATURE RAILS  (signature moment)
+   Three chapters stacked. Each fills a band of the viewport, puts
+   one image in the left or right gutter, and floats its headline
+   in the middle column at two thirds of scroll speed so the text
+   drifts against the images.
+   ============================================================ */
+.feat{
+  --fx1: 33.3333%;                 /* left vertical line  */
+  --fx2: 66.6667%;                 /* right vertical line */
+  --chap: clamp(460px, 66svh, 760px);   /* height of one chapter */
+  --line: rgba(19,18,17,.13);
+  position:relative;overflow:hidden;padding-block:clamp(120px,22svh,260px);
+}
+.feat__v{position:absolute;top:0;bottom:0;width:1px;background:var(--line);z-index:2}
+.feat__v1{left:var(--fx1)}
+.feat__v2{left:var(--fx2)}
+
+.feat__chapter{position:relative;height:var(--chap)}
+.feat__chapter::before{ /* full-bleed hairline at every chapter edge */
+  content:"";position:absolute;left:-10vw;right:-10vw;top:0;height:1px;background:var(--line);z-index:2;
+}
+.feat__chapter:last-of-type::after{
+  content:"";position:absolute;left:-10vw;right:-10vw;bottom:0;height:1px;background:var(--line);z-index:2;
+}
+
+/* section heading, sits in the middle column */
+.feat__head{max-width:calc(var(--fx2) - var(--fx1));margin-inline:auto;text-align:center;
+  margin-bottom:clamp(60px,9vw,120px)}
+.feat__head h2{margin-top:16px}
+
+/* side columns: sub-topic label on top, room for a picture below */
+.feat__side{position:absolute;top:0;bottom:0;width:var(--fx1);margin:0;
+  display:flex;flex-direction:column;padding:clamp(22px,2.4vw,40px);z-index:1}
+.feat__side--l{left:0}
+.feat__side--r{right:0}
+.feat__sub h4{margin:0;font-family:var(--font-display);font-weight:500;line-height:1.05;
+  letter-spacing:-0.02em;font-size:clamp(1.05rem,1.6vw,1.5rem);max-width:20ch}
+.feat__sub p{margin-top:10px;color:var(--ink-soft);font-size:.92rem;max-width:32ch}
+.feat__slot{flex:1;min-height:0;margin-top:clamp(16px,2vw,26px)}
+.feat__side .feat__cap+*{margin-top:0}   /* drop an <img>/<video> in here */
+.feat__slot--live{position:relative;overflow:hidden;border-radius:var(--r-lg);
+  background:#fff;border:1px solid rgba(19,18,17,.12)}
+/* the frame renders the listing at desktop width, then it is scaled
+   down to fit the column, so the page keeps its real layout */
+.feat__slot--live iframe{position:absolute;top:0;left:0;border:0;display:block;
+  transform-origin:0 0;width:var(--fw,1280px);height:var(--fh,900px);transform:scale(var(--fs,1))}
+.feat__cap{margin-top:10px;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-soft)}
+
+/* the frame is inert until clicked, so scrolling past it does not
+   grab the wheel or spin the 3D model */
+.feat__shield{position:absolute;inset:0;z-index:2;cursor:pointer;background:transparent;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px}
+.feat__shield span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;background:rgba(19,18,17,.86);color:var(--paper);
+  padding:8px 14px;border-radius:999px;opacity:0;transform:translateY(6px);
+  transition:opacity 320ms var(--ease-out),transform 320ms var(--ease-out)}
+.feat__slot--live:hover .feat__shield span{opacity:1;transform:none}
+.feat__slot--live.is-live .feat__shield{display:none}
+
+/* live 3D embed presented as a work card (frame + caption) */
+.feat__slot--card{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;
+  position:relative;background:var(--paper);border:1px solid var(--paper-3);
+  border-radius:var(--r-md);
+  transition:border-color 540ms var(--ease-out),box-shadow 540ms var(--ease-out)}
+.feat__slot--card:hover{border-color:var(--accent);box-shadow:0 26px 60px rgba(19,18,17,.20)}
+.feat__embed{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--paper-2);
+  aspect-ratio:auto;cursor:pointer}
+.feat__embed iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;display:block}
+.feat__embed > img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1}
+.feat__slot--card:hover .card__gate{opacity:1;transform:translateX(-50%) translateY(0)}
+.feat__embed.is-live .card__gate,.feat__embed.is-live .card__tag{display:none}
+.feat__cardbody{display:block;padding:15px 17px 19px}
+.feat__cardbody strong{display:block;font-family:var(--font-display);font-weight:500;
+  font-size:1.05rem;letter-spacing:-0.02em}
+.feat__cardbody span{display:block;margin-top:7px;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+
+.feat__text{
+  position:absolute;left:var(--fx1);right:calc(100% - var(--fx2));top:0;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;
+  text-align:center;padding-inline:24px;will-change:transform,opacity;z-index:3;
+}
+.feat__text h3{font-family:var(--font-display);font-weight:500;line-height:.98;letter-spacing:-0.03em;
+  font-size:clamp(1.8rem,3.7vw,3.4rem);max-width:15ch}
+.feat__text p.note{color:var(--ink-soft);max-width:38ch;font-size:.98rem}
+
+/* --- layered scroll -------------------------------------------------
+   Three planes at three speeds. The side columns drift as a block, the
+   picture is cut taller than its frame and slides inside it, and the
+   middle column keeps its own larger lag.
+   ------------------------------------------------------------------ */
+/* Only plain pictures move. Nothing that contains an <iframe> is ever
+   transformed: the mock listing renders a whole page at 1280px and the
+   scan viewer runs a WebGL canvas, and moving an ancestor of either
+   forces the browser to re-composite that subtree on every scroll
+   frame, which is what made this section stutter. */
+.feat__side .media > img,
+.feat__side .media > video{
+  top:-40%;bottom:auto;height:180%;
+  transform:translate3d(0,var(--py,0),0);
+  will-change:transform;backface-visibility:hidden;
+}
+
+/* ============================================================
+   7. INTRO / STATEMENT
+   ============================================================ */
+.intro{text-align:center;background:var(--paper-2)}
+.intro .h-sec{max-width:16ch;margin-inline:auto;margin-block:20px 26px}
+.intro p{max-width:56ch;margin-inline:auto;margin-bottom:32px}
+
+/* --- work cards -------------------------------------------------
+   Each .card__img is a slot. Drop an <iframe>, <img> or <video>
+   inside and it fills the square; the gradient shows until then. */
+.work{margin-top:clamp(56px,8vw,110px);text-align:left}
+.work__title{font-family:var(--font-display);font-weight:500;line-height:1;letter-spacing:-0.03em;
+  font-size:clamp(1.5rem,2.8vw,2.5rem);margin-bottom:clamp(26px,3vw,44px);text-align:center}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.8vw,26px)}
+.card{
+  position:relative;border:1px solid var(--paper-3);border-radius:var(--r-md);
+  background:var(--paper);overflow:hidden;will-change:transform;
+  transition:transform 540ms var(--ease-out),border-color 540ms var(--ease-out);
+}
+.cards:hover .card,.cards:focus-within .card{transform:scale(.955)}      /* siblings recede */
+.cards .card:hover,.cards .card:focus-within{transform:scale(1.07);z-index:6;border-color:var(--accent)}
+.card::after{ /* lift shadow, faded in rather than animated as a shadow */
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:0 26px 60px rgba(19,18,17,.20);opacity:0;transition:opacity 540ms var(--ease-out);
+}
+.card:hover::after,.card:focus-within::after{opacity:1}
+.card__img{position:relative;display:block;aspect-ratio:1/1;overflow:hidden;background:var(--paper-2)}
+.card__img .media{position:absolute;inset:0;border-radius:0}
+.card__img > iframe,.card__img > img,.card__img > video{
+  position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover;z-index:1}
+.card__img[data-scan]{cursor:pointer}
+.card__gate{
+  position:absolute;left:50%;bottom:14px;z-index:3;transform:translateX(-50%) translateY(6px);
+  padding:7px 13px;border-radius:3px;white-space:nowrap;
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:#fff;background:rgba(19,18,17,.52);border:1px solid rgba(255,255,255,.4);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;transition:opacity 320ms var(--ease),transform 320ms var(--ease-out);
+}
+.card:hover .card__gate,.card:focus-within .card__gate{opacity:1;transform:translateX(-50%) translateY(0)}
+.card__img.is-live .card__gate,.card__img.is-live .card__tag{display:none}
+.card__tag{
+  position:absolute;top:11px;right:11px;z-index:3;padding:5px 9px;border-radius:3px;
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:#fff;background:rgba(19,18,17,.42);border:1px solid rgba(255,255,255,.42);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.card__body{display:block;padding:15px 17px 19px}
+.card__body strong{display:block;font-family:var(--font-display);font-weight:500;
+  font-size:1.05rem;letter-spacing:-0.02em}
+.card__body span{display:block;margin-top:7px;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.card--slot .card__img{
+  background-image:repeating-linear-gradient(-45deg,transparent 0 9px,var(--paper-3) 9px 10px);
+  opacity:.85}
+.card--slot .card__body strong,.card--slot .card__body span{color:var(--ink-soft)}
+.card--col2{grid-column:2}
+
+/* ============================================================
+   8. STEPS
+   ============================================================ */
+.steps__grid{display:grid;grid-template-columns:1fr clamp(74px,7vw,110px) 1fr;
+  gap:clamp(20px,3.4vw,52px);align-items:start}
+.steps__sticky{position:sticky;top:14vh}
+/* ----- pricing board (left column of the process grid) ----- */
+.priceboard{background:var(--paper-2);border:1px solid var(--paper-3);
+  border-radius:var(--r-lg);padding:clamp(24px,2.6vw,40px);
+  display:flex;flex-direction:column;gap:clamp(22px,2.2vw,32px)}
+.priceboard .eyebrow{margin-bottom:14px}
+.price__from{display:flex;align-items:baseline;gap:10px;line-height:1}
+.price__num{font-family:var(--font-display);font-weight:500;letter-spacing:-0.04em;
+  font-size:clamp(2.8rem,5.4vw,4.4rem);color:var(--ink)}
+.price__unit{font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-soft)}
+.price__note{margin:14px 0 0;max-width:38ch;font-size:.95rem;line-height:1.55;color:var(--ink-soft)}
+.plans{display:flex;flex-direction:column;gap:clamp(16px,1.6vw,22px);
+  border-top:1px solid var(--paper-3);padding-top:clamp(20px,2vw,28px)}
+.plan{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.plan em{font-family:var(--font-mono);font-style:normal;font-size:11px;letter-spacing:.12em;
+  color:var(--gold);padding-top:4px}
+.plan b{display:block;font-family:var(--font-display);font-weight:500;font-size:1.05rem;
+  letter-spacing:-0.02em;margin-bottom:6px}
+.plan span{display:block;font-size:.95rem;line-height:1.55;color:var(--ink-soft)}
+.price__fine{margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;
+  color:var(--ink-soft);opacity:.8}
+
+/* ----- vertical timeline rail between media and steps ----- */
+.steps__rail{position:sticky;top:12vh;height:76svh;display:flex;justify-content:center}
+.rail{position:relative;width:100%;height:100%;display:flex;justify-content:center}
+.rail__track{position:relative;width:1px;height:100%;background:var(--paper-3)}
+.rail__fill{position:absolute;left:0;top:0;width:100%;height:100%;background:var(--accent);
+  transform:scaleY(var(--p,0));transform-origin:50% 0;will-change:transform}
+.rail__pin{position:absolute;left:50%;top:calc(var(--p,0) * 100%);
+  width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 0 5px rgba(19,18,17,.05);will-change:top}
+.rail__pin::after{content:"";position:absolute;inset:-9px;border-radius:50%;
+  border:1px solid var(--accent);opacity:.45;animation:railPulse 2.6s var(--ease) infinite}
+@keyframes railPulse{0%{transform:scale(.7);opacity:.5}70%{transform:scale(1.35);opacity:0}100%{opacity:0}}
+.rail__dot{position:absolute;left:50%;top:calc(var(--i) / 6 * 100%);
+  width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--paper-3);
+  transition:background 420ms var(--ease),transform 420ms var(--ease-out)}
+.rail__dot.is-past{background:var(--accent);transform:scale(1.25)}
+.rail__cap{position:absolute;left:50%;transform:translateX(-50%);
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-soft);white-space:nowrap}
+.rail__cap--a{top:-26px}
+.rail__cap--b{bottom:-24px}
+.rail__label{position:absolute;left:50%;top:calc(100% + 46px);transform:translateX(-50%);
+  text-align:center;line-height:1.2;white-space:nowrap;
+  font-family:var(--font-display);font-size:clamp(.9rem,1.05vw,1.1rem);letter-spacing:-0.01em;
+  color:var(--ink-soft);pointer-events:none}
+.rail__label em{display:block;font-style:normal;color:var(--accent)}
+@media (prefers-reduced-motion:reduce){
+  .rail__pin::after{animation:none}
+}
+.step{padding-block:clamp(46px,9vh,110px);border-top:1px solid var(--paper-3);
+  transition:opacity 600ms var(--ease),filter 600ms var(--ease)}
+.step:not(.is-active){opacity:.34}
+.step:first-child{border-top:0;padding-top:0}
+.step__no{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.step__no i{width:9px;height:9px;border-radius:50%;background:var(--paper-3);transition:background 500ms var(--ease),transform 500ms var(--ease-out)}
+.step.is-active .step__no i{background:var(--accent);transform:scale(1.35)}
+.step h3{font-size:clamp(1.6rem,3vw,2.6rem);margin-bottom:14px;
+  transform:translateX(-10px);transition:transform 700ms var(--ease-out)}
+.step.is-active h3{transform:none}
+@media (prefers-reduced-motion:reduce){
+  .step:not(.is-active){opacity:1}
+  .step h3{transform:none}
+}
+.step h3{font-size:clamp(1.6rem,3vw,2.6rem);margin-bottom:14px}
+.step p{color:var(--ink-soft);max-width:40ch;margin-bottom:22px}
+
+/* ============================================================
+   9. DARK STATEMENT
+   ============================================================ */
+.dark{background:var(--ink);color:var(--on-dark);overflow:hidden}
+.dark .eyebrow{color:color-mix(in srgb,var(--on-dark) 55%,transparent)}
+.dark__media{position:absolute;inset:0;opacity:.42;will-change:transform}
+.dark__media .media{position:absolute;inset:-12%;border-radius:0}
+.dark__inner{position:relative;z-index:2}
+.dark h2{max-width:15ch;margin-block:22px 0}
+
+/* ----- scroll-scrubbed "why" stage ----- */
+.why{padding:0;overflow:clip}   /* the background sits at inset:-12%, keep it inside */
+.why__track{position:relative;height:340svh}
+.why__stick{position:sticky;top:0;height:100svh;display:flex;align-items:center;
+  overflow:hidden;background:var(--ink)}
+.why__stick > .wrap{width:100%}
+.why__h{max-width:16ch;margin-block:22px 0}
+.why__h .w{display:inline-block;opacity:.1;transform:translateY(.16em);
+  transition:opacity 520ms var(--ease),transform 620ms var(--ease-out)}
+.why__h .w.is-on{opacity:1;transform:none}
+.why .stat{transform-origin:0 0;
+  transition:transform 700ms var(--ease-out),opacity 700ms var(--ease),
+             border-color 700ms var(--ease)}
+.why .stat{opacity:.62}
+.why .stat.is-on{opacity:1}                    /* passed: stays lit */
+.why .stat.is-focus{transform:scale(1.07);border-color:var(--accent)}
+.why .stat.is-on .stat__ico{color:var(--accent)}
+.why .stat .stat__ico{transform:none;opacity:.9}
+.why .stat.is-on .stat__line{transform:scaleX(1)}
+@media (max-width:900px){
+  .why__track{height:auto}
+  .why__stick{position:static;height:auto;padding-block:clamp(64px,12vh,140px)}
+  .why__h .w{opacity:1;transform:none}
+  .why .stat{opacity:1;transform:none}
+  .why .stat .stat__line{transform:scaleX(1)}
+}
+@media (prefers-reduced-motion:reduce){
+  .why__h .w{opacity:1;transform:none}
+  .why .stat{opacity:1;transform:none}
+  .why .stat .stat__line{transform:scaleX(1)}
+}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(20px,3vw,50px);margin-top:clamp(50px,8vw,110px)}
+.stat{border-top:1px solid rgba(247,241,230,.22);padding-top:20px}
+.stat b{display:block;font-family:var(--font-display);font-weight:500;font-size:clamp(2.4rem,5.4vw,4.4rem);line-height:1;letter-spacing:-0.04em}
+.stat--txt b{font-size:clamp(1.5rem,2.6vw,2.3rem);letter-spacing:-0.03em;line-height:1.1}
+.stat--txt span{max-width:32ch}
+
+.stat__ico{width:clamp(34px,3.4vw,44px);height:auto;color:var(--on-dark);opacity:.9;
+  transform:rotate(-8deg) scale(.86);opacity:0;
+  transition:transform 800ms var(--ease-out) 120ms,opacity 700ms var(--ease) 120ms}
+
+
+.stat.reveal:not(.is-hidden) .stat__ico{transform:none;opacity:.9}
+.stat.reveal:not(.is-hidden) .stat__line{transform:scaleX(1)}
+.stat:hover .stat__ico{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){
+  .stat__ico{transform:none;opacity:.9}
+  .stat__line{transform:scaleX(1)}
+}
+.stat span{display:block;margin-top:12px;font-size:.92rem;color:color-mix(in srgb,var(--on-dark) 62%,transparent);max-width:26ch}
+.stat .stat__top{display:flex;align-items:center;justify-content:space-between;
+  margin:0 0 clamp(18px,3vh,34px);max-width:none}
+.stat .stat__top em{margin:0;font-style:normal;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.16em;color:color-mix(in srgb,var(--on-dark) 45%,transparent)}
+.stat .stat__line{width:100%;max-width:none;height:1px;margin:16px 0 0;
+  background:var(--accent);transform:scaleX(0);transform-origin:0 50%;
+  transition:transform 900ms var(--ease-out)}
+
+/* ============================================================
+   10. NETWORK / SPLIT
+   ============================================================ */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,80px);align-items:center}
+.split .media{aspect-ratio:1/1.08}
+.split h2{margin-block:18px 22px}
+.split p{margin-bottom:30px;max-width:42ch}
+
+/* --- vision / mission --- */
+.vm{max-width:820px;margin-inline:auto;text-align:center}
+.vm__block + .vm__block{margin-top:clamp(52px,7vw,96px)}
+.vm__block h2{font-size:clamp(1.9rem,4.2vw,3.4rem);margin:0 0 22px}
+.vm__block p{margin:0 auto;max-width:56ch;font-size:clamp(1.05rem,1.5vw,1.35rem);
+  line-height:1.5;color:var(--ink-soft)}
+.vm__rule{display:block;width:1px;height:clamp(40px,6vw,72px);margin:clamp(40px,5vw,68px) auto 0;
+  background:linear-gradient(var(--paper-3),transparent)}
+
+/* ============================================================
+   11. MARQUEE
+   ============================================================ */
+.marquee{overflow:hidden;padding-block:clamp(40px,6vw,80px);border-block:1px solid var(--paper-3)}
+.marquee__track{display:inline-flex;white-space:nowrap;animation:scrollx 26s linear infinite;will-change:transform}
+.marquee:hover .marquee__track{animation-play-state:paused}
+@keyframes scrollx{to{transform:translateX(-50%)}}
+.marquee span{padding-right:clamp(24px,4vw,64px);font-family:var(--font-display);font-weight:500;font-size:clamp(2.4rem,7vw,6rem);letter-spacing:-0.04em;line-height:1}
+.marquee em{color:var(--accent);font-style:normal}
+
+/* ============================================================
+   12. FINAL CTA
+   ============================================================ */
+.cta__card{position:relative;overflow:hidden;border-radius:var(--r-lg);min-height:min(74vh,660px);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(26px,4vw,60px);
+  background:linear-gradient(148deg,#B98F4B 0%,var(--gold) 44%,#EADCBB 100%)}
+.cta__glow .spectrum span{mix-blend-mode:normal;opacity:.55}
+.cta__glow .spectrum span:nth-child(1){background:#F6EDD8}
+.cta__glow .spectrum span:nth-child(2){background:var(--gold)}
+.cta__glow .spectrum span:nth-child(3){background:#C79E58}
+.cta__glow .spectrum span:nth-child(4){background:#F1E3C4}
+.cta__card > *{position:relative;z-index:2}
+.cta__glow{position:absolute;inset:0;overflow:hidden}
+/* orbit rings — echo of the logo mark */
+.cta__orbit{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.cta__orbit span{position:absolute;top:50%;left:50%;border-radius:50%;
+  border:1px solid rgba(19,18,17,.16)}
+.cta__orbit span:nth-child(1){width:132%;height:132%;
+  transform:translate(-50%,-50%) rotate(-16deg) scaleY(.34)}
+.cta__orbit span:nth-child(2){width:96%;height:96%;border-color:rgba(255,255,255,.30);
+  transform:translate(-50%,-50%) rotate(-16deg) scaleY(.34)}
+.cta__orbit span:nth-child(3){width:62%;height:62%;border-color:rgba(19,18,17,.10);
+  transform:translate(-50%,-50%) rotate(-16deg) scaleY(.34)}
+.cta h2{max-width:12ch;margin-block:18px 30px;color:var(--ink)}
+.cta p{max-width:40ch;margin-bottom:30px;color:rgba(19,18,17,.72)}
+.cta .eyebrow{color:rgba(19,18,17,.6)}
+.cta__contact{display:flex;flex-direction:column;gap:clamp(10px,1.4vw,18px)}
+.cta__link{display:flex;align-items:center;gap:clamp(14px,2vw,26px);
+  text-decoration:none;color:var(--ink);width:fit-content;max-width:100%}
+.cta__label{flex:none;display:grid;place-items:center;
+  width:clamp(38px,3.4vw,52px);height:clamp(38px,3.4vw,52px);
+  border:1px solid rgba(19,18,17,.28);border-radius:50%;color:var(--ink);
+  align-self:center;
+  transition:border-color 420ms var(--ease-out),background 420ms var(--ease-out)}
+.cta__label svg{width:46%;height:46%;display:block}
+.cta__value{font-family:var(--font-display);font-weight:500;line-height:1.02;
+  letter-spacing:-0.03em;font-size:clamp(22px,3.6vw,42px);word-break:break-word;
+  background-image:linear-gradient(currentColor,currentColor);
+  background-size:0% 1.5px;background-repeat:no-repeat;background-position:0 100%;
+  transition:background-size 520ms var(--ease-out)}
+.cta__link:hover .cta__value,
+.cta__link:focus-visible .cta__value{background-size:100% 1.5px}
+.cta__link:hover .cta__label,
+.cta__link:focus-visible .cta__label{border-color:rgba(19,18,17,.55);background:rgba(255,255,255,.22)}
+@media (prefers-reduced-motion:reduce){
+  .cta__value{transition:none}
+}
+
+/* ============================================================
+   13. FOOTER
+   ============================================================ */
+.ftr{padding-block:clamp(50px,7vw,90px) 34px}
+.ftr__top{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:34px;padding-bottom:clamp(40px,6vw,80px)}
+.ftr h4{margin:0 0 16px;font-family:var(--font-mono);font-size:11px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.ftr ul{list-style:none;margin:0;padding:0;display:grid;gap:10px;font-size:.93rem}
+.ftr ul a:hover{color:var(--accent)}
+.ftr__legal{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;
+  margin:22px 0 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;line-height:1.5}
+.ftr__legal dt{text-transform:uppercase;color:var(--ink-soft)}
+.ftr__legal dd{margin:0;color:var(--ink)}
+.ftr__bot{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--paper-3);padding-top:22px;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.ftr__word{font-family:var(--font-display);font-weight:500;font-size:clamp(3rem,13vw,11rem);line-height:.85;letter-spacing:-0.05em;
+  margin-bottom:clamp(24px,4vw,54px);color:var(--paper-3);user-select:none}
+
+/* ============================================================
+   13b. CENTRED TEXT
+   The narrative blocks are centred at every width, so no block
+   sits off to one side with a short wrap and a wide empty gutter.
+   Cards and lists (work cards, price board, footer) keep their
+   own left alignment.
+   ============================================================ */
+.feat__side{text-align:center}
+.feat__sub h4,.feat__sub p{margin-inline:auto}
+.step{text-align:center}
+.step__no{justify-content:center}
+.step p{margin-inline:auto}
+.dark__inner{text-align:center}
+.dark h2,.why__h{margin-inline:auto}
+.stat{text-align:center}
+.stat .stat__top{justify-content:center;gap:12px}
+.stat span{margin-inline:auto}
+
+/* ============================================================
+   14. RESPONSIVE
+   ============================================================ */
+@media (max-width:1000px){
+  /* the bar is 78px tall here and .pad-y bottoms out at 80px, so the
+     first heading was landing 2px under the fixed header */
+  .intro{padding-top:calc(78px + clamp(40px,7vw,80px))}
+  .nav{display:none}
+  .burger{display:grid}
+  .isle-btn,.isle-menu{display:none!important}
+  .hdr__right .btn{display:none}
+  .steps__grid,.split{grid-template-columns:1fr}
+  .steps__rail{display:none}
+  .steps__sticky{position:static}
+  .priceboard{max-width:560px}
+  .split .media{order:-1}
+  .ftr__top{grid-template-columns:1fr 1fr}
+}
+@media (max-width:900px){
+  .feat__text h3{font-size:clamp(1.4rem,4vw,2.2rem)}
+}
+@media (max-width:760px){
+  .cards{grid-template-columns:1fr;gap:20px}
+  .card--col2{grid-column:auto}
+  .cards:hover .card,.cards:focus-within .card{transform:none}
+  .cards .card:hover,.cards .card:focus-within{transform:none}
+  .card:hover::after,.card:focus-within::after{opacity:0}
+}
+@media (max-width:700px){
+  .feat{padding-block:60px;padding-inline:var(--pad);overflow:visible}
+  .feat__v{display:none}
+  .feat__chapter{height:auto;padding-bottom:64px}
+  .feat__chapter::before,.feat__chapter:last-of-type::after{display:none}
+  .feat__chapter{display:flex;flex-direction:column}
+  .feat__head{max-width:100%;margin-bottom:52px}
+  .feat__side{position:static;width:100%;padding:0;margin-bottom:30px}
+  .feat__side:empty{display:none}
+  .feat__slot{flex:none;height:52svh;margin-top:16px}
+  .feat__side .media > img,.feat__side .media > video{
+    top:0;bottom:0;height:100%;transform:none;will-change:auto}
+  .feat__text{position:static;height:auto;order:-1;margin-bottom:34px;
+    transform:none!important;opacity:1!important;
+    align-items:center;text-align:center;padding-inline:0}
+  .stats{grid-template-columns:1fr;gap:26px}
+  .hero__foot{flex-direction:column;align-items:flex-start}
+  .hero__copy{position:static;bottom:auto;max-width:100%;margin-bottom:auto;padding-top:22vh}
+  .hero__lede{left:0;right:0;width:auto;top:auto;bottom:100px;padding:16px var(--pad) 18px}
+  .hero__grid{display:none}
+  .hero__model{left:auto;right:var(--pad);top:15%;bottom:auto;width:40vw;height:40vw}
+  .scrollcue{display:none}
+  .ftr__top{grid-template-columns:1fr}
+  /* no hover on a phone, so the prompt on a scan has to be visible */
+  .card__gate{opacity:1;transform:translateX(-50%)}
+}
+
+/* ============================================================
+   15. REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important;
+  }
+  .feat__text{transform:none!important;opacity:1!important}
+  .feat__side .media > img,.feat__side .media > video{
+    top:0!important;bottom:0!important;height:100%!important;
+    transform:none!important;will-change:auto!important}
+}
+/* ============================================================
+   15. ROUTES  —  legal + examples live in this same file
+   ============================================================ */
+.route{display:none}
+body.on-legal > main,
+body.on-examples > main{display:none}
+body.on-legal #route-legal{display:block}
+body.on-examples #route-examples{display:block}
+body.on-examples .ftr,
+body.on-examples .hdr{display:none}
+body.on-examples{overflow:hidden}
+
+#route-examples{position:fixed;inset:0;z-index:200;background:var(--paper)}
+#route-examples iframe{width:100%;height:100%;border:0;display:block}
+.exit{position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:210;
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 16px;border-radius:999px;background:var(--ink);color:var(--paper);
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  box-shadow:0 10px 30px rgba(19,18,17,.28)}
+.exit:hover{background:var(--accent);color:#fff}
+
+/* --- legal document --- */
+.lg{padding-block:clamp(48px,7vw,96px) clamp(56px,8vw,110px)}
+.lg__head{max-width:760px;margin-bottom:clamp(30px,4vw,52px)}
+.lg__eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-soft);margin:0 0 14px}
+.lg h1{margin:0;font-family:var(--font-display);font-weight:500;line-height:.98;
+  letter-spacing:-0.035em;font-size:clamp(2.2rem,6vw,4.2rem)}
+.lg__meta{margin:20px 0 0;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.lg__lead{margin:22px 0 0;max-width:62ch;font-size:1.05rem;color:var(--ink-soft)}
+.lg__tabs{display:flex;gap:8px;margin:30px 0 0;flex-wrap:wrap}
+.lg__tabs a{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;padding:10px 18px;border-radius:999px;
+  border:1px solid var(--paper-3);color:var(--ink-soft);
+  transition:border-color 300ms var(--ease-out),color 300ms var(--ease-out),background 300ms var(--ease-out)}
+.lg__tabs a:hover{border-color:var(--gold);color:var(--ink)}
+.lg__tabs a.is-on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.lg__part{padding-top:clamp(46px,6vw,84px);scroll-margin-top:96px}
+.lg__part + .lg__part{margin-top:clamp(56px,8vw,110px);border-top:1px solid var(--paper-3)}
+.lg__part > h2{margin:0 0 6px;font-family:var(--font-display);font-weight:500;
+  letter-spacing:-0.03em;font-size:clamp(1.7rem,3.4vw,2.6rem)}
+.lg__partmeta{margin:0 0 8px;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.lg__partlead{margin:0 0 clamp(26px,3vw,40px);max-width:62ch;color:var(--ink-soft)}
+.lg__grid{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);
+  gap:clamp(28px,5vw,80px);align-items:start}
+.lg__toc{position:sticky;top:96px;font-size:.9rem}
+.lg__toc h2{margin:0 0 14px;font-family:var(--font-mono);font-size:11px;font-weight:400;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.lg__toc ol{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.lg__toc a{color:var(--ink-soft);transition:color 300ms var(--ease-out)}
+.lg__toc a:hover{color:var(--accent)}
+.lg__body{max-width:70ch;counter-reset:sec}
+.lg__body section{padding-top:clamp(30px,4vw,48px);margin-top:clamp(30px,4vw,48px);
+  border-top:1px solid var(--paper-3);scroll-margin-top:96px}
+.lg__body section:first-child{padding-top:0;margin-top:0;border-top:0}
+.lg__body h2{counter-increment:sec;margin:0 0 16px;font-family:var(--font-display);
+  font-weight:500;letter-spacing:-0.025em;font-size:clamp(1.3rem,2.4vw,1.7rem)}
+.lg__body h2::before{content:counter(sec) ". ";color:var(--gold)}
+.lg__body h3{margin:26px 0 10px;font-family:var(--font-display);font-weight:500;
+  font-size:1.02rem;letter-spacing:-0.015em}
+.lg__body p{margin:0 0 14px;color:var(--ink-soft)}
+.lg__body ul{margin:0 0 14px;padding-left:20px;color:var(--ink-soft)}
+.lg__body li{margin-bottom:8px}
+.lg__body strong{color:var(--ink);font-weight:500}
+.lg__body a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.lg__body dl{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:0 0 16px;
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.04em}
+.lg__body dt{color:var(--ink-soft);text-transform:uppercase;font-size:11px;letter-spacing:.1em}
+.lg__body dd{margin:0}
+.lg__callout{background:var(--paper-2);border:1px solid var(--paper-3);
+  border-radius:var(--r-md);padding:18px 20px;margin:0 0 18px}
+.lg__callout p{margin:0;font-size:.94rem}
+@media (max-width:900px){
+  .lg__grid{grid-template-columns:1fr}
+  .lg__toc{position:static;padding-bottom:8px;border-bottom:1px solid var(--paper-3)}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ══════════ HEADER ══════════ -->
+<header class="hdr" id="hdr">
+  <a class="logo" href="#top"><img class="mark" src="assets/logo-mark.webp" alt="" width="128" height="128">Orbit Studio</a>
+  <nav class="nav" aria-label="Main">
+    <a href="#work">Our Work</a>
+    <a href="#what">Ways to use</a>
+    <a href="#process">Process &amp; Pricing</a>
+    <a href="#why">Why us</a>
+    <a href="#vision">Vision</a>
+    <a href="#examples">Examples</a>
+  </nav>
+  <div class="hdr__right">
+    <button class="isle-btn" id="isleBtn" aria-label="Open menu" aria-expanded="false" aria-controls="isleMenu"><i></i></button>
+    <nav class="isle-menu" id="isleMenu" aria-label="Main">
+      <a href="#work">Our Work</a>
+      <a href="#what">Ways to use</a>
+      <a href="#process">Process &amp; Pricing</a>
+      <a href="#why">Why us</a>
+      <a href="#vision">Vision</a>
+      <a href="#examples">Examples</a>
+    </nav>
+    <a class="btn btn--paper" href="#cta"><span class="lbl lbl--bar">Contact us</span><span class="lbl lbl--island">Contact us</span><span class="arw">→</span></a>
+    <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><i></i></button>
+  </div>
+</header>
+
+<nav class="menu" id="menu" aria-label="Mobile">
+  <a style="--i:0" href="#work">Our Work</a>
+  <a style="--i:1" href="#what">Ways to use</a>
+  <a style="--i:2" href="#process">Process &amp; Pricing</a>
+  <a style="--i:3" href="#why">Why us</a>
+  <a style="--i:4" href="#vision">Vision</a>
+  <a style="--i:5" href="#examples">Examples</a>
+  <a style="--i:6" href="#cta" class="accentword">Contact</a>
+</nav>
+
+<main id="top">
+
+
+<!-- ══════════ INTRO ══════════ -->
+<section class="intro pad-y" id="how">
+  <div class="wrap">
+    <h1 class="h-sec lines" data-lines>
+      <span class="line" style="--i:0"><span>Entering</span></span>
+      <span class="line" style="--i:1"><span><em class="accentword" style="font-style:normal">a new era</em></span></span>
+      <span class="line" style="--i:2"><span>of property viewing</span></span>
+    </h1>
+    <p class="body-lg reveal" style="--i:1">Orbit Studio is a young startup, founded in Breda, aiming to rebuild how property gets viewed. We turn properties into interactive 3D models that can be entered and explored.</p>
+    <a class="btn btn--dark reveal" style="--i:2" href="#cta">Contact us<span class="arw">→</span></a>
+
+    <!-- ── WORK ──────────────────────────────────────────────
+         To fill a slot, put your viewer inside .card__img:
+           <iframe src="https://superspl.at/s?id=SCANID"
+                   title="NAME" allow="fullscreen; xr-spatial-tracking"
+                   loading="lazy"></iframe>
+         then swap the name and caption below it. -->
+    <div class="work" id="work">
+      <h3 class="work__title reveal">See some of our work</h3>
+      <div class="cards">
+
+        <a class="card reveal" style="--i:0"
+           href="https://superspl.at/s?id=6270cc96" target="_blank" rel="noopener">
+          <span class="card__img" data-scan="6270cc96" data-title="Waterschap Brabantse Delta, 3D scan">
+            <span class="media"></span>
+            <img alt="" loading="lazy" onerror="this.remove()"
+                 src="https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/splat/6270cc96/v1/xl.webp">
+            <span class="card__tag">Live</span>
+            <span class="card__gate">Click to interact</span>
+          </span>
+          <span class="card__body">
+            <strong>Waterschap Brabantse Delta</strong>
+            <span>17th-century estate · exterior scan</span>
+          </span>
+        </a>
+
+        <a class="card reveal" style="--i:1"
+           href="https://superspl.at/s?id=366794ed" target="_blank" rel="noopener">
+          <span class="card__img" data-scan="366794ed" data-title="Sint Laurentiuskerk, 3D scan">
+            <span class="media"></span>
+            <img alt="" loading="lazy" onerror="this.remove()"
+                 src="https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/splat/366794ed/v1/xl.webp">
+            <span class="card__tag">Live</span>
+            <span class="card__gate">Click to interact</span>
+          </span>
+          <span class="card__body">
+            <strong>Sint Laurentiuskerk</strong>
+            <span>Church exterior · aerial scan</span>
+          </span>
+        </a>
+
+        <a class="card reveal" style="--i:2"
+           href="https://superspl.at/s?id=3f86514a" target="_blank" rel="noopener">
+          <span class="card__img" data-scan="3f86514a" data-title="Sticking Molen De Korenbloem, 3D scan">
+            <span class="media"></span>
+            <img alt="" loading="lazy" onerror="this.remove()"
+                 src="https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/splat/3f86514a/v1/xl.webp">
+            <span class="card__tag">Live</span>
+            <span class="card__gate">Click to interact</span>
+          </span>
+          <span class="card__body">
+            <strong>Sticking Molen De Korenbloem</strong>
+            <span>Exterior scan</span>
+          </span>
+        </a>
+
+        <a class="card card--col2 reveal" style="--i:3"
+           href="https://superspl.at/s?id=d6fbbc96" target="_blank" rel="noopener">
+          <span class="card__img" data-scan="d6fbbc96" data-title="Citadel, 3D scan">
+            <span class="media"></span>
+            <img alt="" loading="lazy" onerror="this.remove()"
+                 src="https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/splat/d6fbbc96/v1/xl.webp">
+            <span class="card__tag">Live</span>
+            <span class="card__gate">Click to interact</span>
+          </span>
+          <span class="card__body">
+            <strong>Citadel</strong>
+            <span>Exterior scan</span>
+          </span>
+        </a>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ WAYS TO USE THE 3D MODEL ══════════
+     Middle column holds the main topic, text only. Left and right
+     columns hold the sub-topics, each with an empty .feat__slot
+     underneath for a picture or example. -->
+<section class="feat" id="what">
+  <i class="feat__v feat__v1" aria-hidden="true"></i>
+  <i class="feat__v feat__v2" aria-hidden="true"></i>
+
+  <header class="feat__head">
+    <p class="eyebrow reveal">What you can do with it</p>
+    <h2 class="h-sec lines" data-lines>
+      <span class="line" style="--i:0"><span>Ways to use</span></span>
+      <span class="line" style="--i:1"><span>the 3D model</span></span>
+    </h2>
+  </header>
+
+  <!-- 01 ── WEBSITE EMBEDDED -->
+  <article class="feat__chapter">
+    <figure class="feat__side feat__side--l">
+      <div class="feat__sub">
+        <h4>In the photo gallery</h4>
+        <p>A 3D tab next to the photos, floor plans and video. The same place buyers look first.</p>
+      </div>
+      <div class="feat__slot feat__slot--live">
+        <iframe data-listing="embed-gallery" loading="lazy"
+                title="3D viewer opened from the photo gallery of a listing page"></iframe>
+      </div>
+    </figure>
+
+    <div class="feat__text" data-feat-text>
+      <p class="eyebrow">01</p>
+      <h3>Embedded in your website</h3>
+      <p class="note">The viewer sits inside your own listing page. Buyers open it in the browser, on any device, with nothing to install.</p>
+      <a class="btn btn--dark" href="#examples">See it on an example listing<span class="arw">&rarr;</span></a>
+    </div>
+
+    <figure class="feat__side feat__side--r">
+      <div class="feat__sub">
+        <h4>In the sidebar</h4>
+        <p>A small card that stays next to the agent details while the buyer reads the rest of the page.</p>
+      </div>
+      <div class="feat__slot feat__slot--live">
+        <iframe data-listing="embed-side" loading="lazy"
+                title="3D viewer card in the sidebar of a listing page"></iframe>
+      </div>
+    </figure>
+  </article>
+
+  <!-- 02 ── RESHOOT FROM ANY ANGLE -->
+  <article class="feat__chapter">
+    <figure class="feat__side feat__side--l">
+      <div class="feat__sub">
+        <h4>Photos from impossible angles</h4>
+        <p>Frame a still from anywhere around the property, including positions a camera could never reach.</p>
+      </div>
+      <div class="media media--fit feat__slot"><video autoplay muted loop playsinline preload="auto" disablepictureinpicture src="assets/feature-listing-video.mp4"></video></div>
+    </figure>
+
+    <div class="feat__text" data-feat-text>
+      <p class="eyebrow">02</p>
+      <h3>Re-shoot from any angle, any time</h3>
+      <p class="note">The scan is the whole property in 3D. New material comes straight out of it, without going back to the address.</p>
+    </div>
+
+    <figure class="feat__side feat__side--r">
+      <div class="feat__sub">
+        <h4>Video however you like</h4>
+        <p>Any camera move, any length, cut to fit whatever channel it goes on.</p>
+      </div>
+      <div class="feat__slot feat__slot--card">
+        <div class="feat__embed card__img" data-scan="3ca9aef9" data-autoload
+             data-title="Matbos Castle, 3D scan">
+          <span class="media"></span>
+          <img alt="" loading="lazy" onerror="this.remove()"
+               src="https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/splat/3ca9aef9/v1/xl.webp">
+          <span class="card__tag">Live</span>
+          <span class="card__gate">Click to interact</span>
+        </div>
+      </div>
+    </figure>
+  </article>
+
+  <!-- 03 ── THE FUTURE -->
+  <article class="feat__chapter">
+    <figure class="feat__side feat__side--l">
+      <div class="feat__sub"><h4>VR station</h4></div>
+      <div class="media feat__slot"><img alt="VR headset and controllers on a desk in a real estate office" loading="lazy" src="assets/vr-station.webp"></div>
+    </figure>
+
+    <div class="feat__text" data-feat-text>
+      <p class="eyebrow">03 — Soon</p>
+      <p class="eyebrow accentword">Arriving late 2026</p>
+      <h3>Orbit Station</h3>
+      <p class="note">A VR viewing room in every real estate office, where a buyer puts on a headset and walks through a property before they have ever set foot in it.</p>
+    </div>
+
+    <figure class="feat__side feat__side--r">
+      <div class="feat__sub"><h4>New way of viewing</h4></div>
+      <div class="media feat__slot"><img alt="Agent walking through a property in VR" loading="lazy" src="assets/vr-walkthrough.webp"></div>
+    </figure>
+  </article>
+</section>
+
+<!-- ══════════ STEPS ══════════ -->
+<section class="pad-y" id="process">
+  <div class="wrap">
+    <h2 class="h-sec lines" data-lines style="margin-bottom:clamp(38px,6vh,80px)">
+      <span class="line" style="--i:0"><span>Process &amp; Pricing</span></span>
+    </h2>
+  </div>
+  <div class="wrap steps__grid">
+    <div class="steps__sticky">
+      <div class="priceboard">
+        <div>
+          <p class="eyebrow">Pricing</p>
+          <p class="price__from"><span class="price__unit">Starting from</span><span class="price__num">€99</span></p>
+          <p class="price__note">Excluding BTW. The final price varies per property, based on the size of the plot and the complexity of the scan.</p>
+        </div>
+        <div class="plans">
+          <div class="plan">
+            <em>01</em>
+            <div>
+              <b>One-off fee</b>
+              <span>A fixed one-time payment, agreed up front and invoiced after you receive the finished scan.</span>
+            </div>
+          </div>
+          <div class="plan">
+            <em>02</em>
+            <div>
+              <b>Percentage of the sale</b>
+              <span>Between 0.1% and 0.25% of the property value, paid once the sale is completed.</span>
+            </div>
+          </div>
+        </div>
+        <p class="price__fine">All prices are subject to change depending on the agreement and any promotional period.</p>
+      </div>
+    </div>
+
+    <div class="steps__rail">
+      <div class="rail">
+        <div class="rail__track">
+          <span class="rail__fill"></span>
+          <span class="rail__dot" style="--i:0"></span><span class="rail__dot" style="--i:1"></span>
+          <span class="rail__dot" style="--i:2"></span><span class="rail__dot" style="--i:3"></span>
+          <span class="rail__dot" style="--i:4"></span><span class="rail__dot" style="--i:5"></span>
+          <span class="rail__dot" style="--i:6"></span>
+          <span class="rail__pin"></span>
+          <span class="rail__cap rail__cap--a">Day 1</span>
+          <span class="rail__cap rail__cap--b">Day 7</span>
+          <span class="rail__label">Up to <em>one week</em></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps__list">
+      <article class="step is-active" data-step="0">
+        <div class="step__no"><i></i><span class="eyebrow">Step 1</span></div>
+        <h3>Address</h3>
+        <p>You send an address and a time window. We check the airspace and confirm the slot.</p>
+        <a class="btn btn--line" href="#cta">Get your estimate<span class="arw">→</span></a>
+      </article>
+      <article class="step" data-step="1">
+        <div class="step__no"><i></i><span class="eyebrow">Step 2</span></div>
+        <h3>Scan</h3>
+        <p>One visit to the property. Exterior captured from every angle, no prep needed from you.</p>
+      </article>
+      <article class="step" data-step="2">
+        <div class="step__no"><i></i><span class="eyebrow">Step 3</span></div>
+        <h3>Build</h3>
+        <p>Footage trained into a 3D model, quality-checked before you see it.</p>
+      </article>
+      <article class="step" data-step="3">
+        <div class="step__no"><i></i><span class="eyebrow">Step 4</span></div>
+        <h3>Live</h3>
+        <p>One line of embed code on your listing. Buyers walk the property from any browser.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ DARK STATEMENT + STATS ══════════ -->
+<section class="dark why" id="why">
+  <div class="why__track">
+   <div class="why__stick">
+  <div class="dark__media" data-parallax>
+    <div class="media"></div>
+  </div>
+  <div class="wrap dark__inner">
+    <p class="eyebrow reveal">Why now</p>
+    <h2 class="h-sec why__h" aria-label="Today's system was built for yesterday"><span class="w" style="--i:0">Today's</span> <span class="w" style="--i:1">system</span> <span class="w" style="--i:2">was</span> <span class="w" style="--i:3">built</span> <span class="w" style="--i:4">for</span> <span class="w" style="--i:5">yesterday</span></h2>
+
+    <div class="stats">
+      <div class="stat stat--txt" style="--i:0"><span class="stat__top"><svg class="stat__ico" viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="20" cy="20" r="15.5" stroke="currentColor" stroke-width="1.2"/><path d="M20 8.5v23M8.5 20h23" stroke="currentColor" stroke-width="1.2"/><path d="M20 12.5 24 20l-4 7.5L16 20z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg><em>01</em></span><b>Be the first</b><span class="stat__line"></span><span>Step into the future before anyone else in your market does. This is your chance to be different, to stand out, and to dare to try something new.</span></div>
+      <div class="stat stat--txt" style="--i:1"><span class="stat__top"><svg class="stat__ico" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M23 8.5h8.5V17M17 31.5H8.5V23" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M31.5 8.5 22 18M8.5 31.5 18 22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="20" cy="20" r="2.6" stroke="currentColor" stroke-width="1.2"/></svg><em>02</em></span><b>Expand further</b><span class="stat__line"></span><span>Reach buyers far beyond your own area. Only show the house once they are serious about it. That means more time in your week, and fewer wasted viewings and disappointed clients.</span></div>
+      <div class="stat stat--txt" style="--i:2"><span class="stat__top"><svg class="stat__ico" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M6 20h24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M23 12.5 30.5 20 23 27.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 12v16" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg><em>03</em></span><b>Don't get left behind</b><span class="stat__line"></span><span>The future is coming, like it or not. This is how real estate will be viewed.</span></div>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ══════════ VISION / MISSION ══════════ -->
+<section class="pad-y" id="vision">
+  <div class="wrap">
+    <div class="vm">
+      <div class="vm__block">
+        <p class="eyebrow reveal">Vision</p>
+        <h2 class="h-sec lines" data-lines>
+          <span class="line" style="--i:0"><span>Every property should be</span></span>
+          <span class="line" style="--i:1"><span>walkable before it's visited</span></span>
+        </h2>
+        <p class="reveal" style="--i:1">Orbit Studio exists to make that the standard in Dutch real estate, not the exception.</p>
+        <span class="vm__rule reveal" style="--i:2" aria-hidden="true"></span>
+      </div>
+      <div class="vm__block">
+        <p class="eyebrow reveal">Mission</p>
+        <h2 class="h-sec lines" data-lines>
+          <span class="line" style="--i:0"><span>We turn real places into</span></span>
+          <span class="line" style="--i:1"><span>3D scans that live in the browser</span></span>
+        </h2>
+        <p class="reveal" style="--i:1">No app, no headset, no appointment. Just a link that lets anyone explore a property as if they were standing there.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ MARQUEE ══════════ -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee__track">
+    <span>Step into Orbit Studio <em>✳</em></span><span>Step into Orbit Studio <em>✳</em></span>
+    <span>Step into Orbit Studio <em>✳</em></span><span>Step into Orbit Studio <em>✳</em></span>
+    <span>Step into Orbit Studio <em>✳</em></span><span>Step into Orbit Studio <em>✳</em></span>
+    <span>Step into Orbit Studio <em>✳</em></span><span>Step into Orbit Studio <em>✳</em></span>
+  </div>
+</div>
+
+<!-- ══════════ FINAL CTA ══════════ -->
+<section class="cta pad-y" id="cta">
+  <div class="wrap">
+    <div class="cta__card">
+      <div class="cta__glow"><div class="spectrum" style="filter:blur(70px);opacity:1"><span></span><span></span><span></span><span></span></div></div>
+      <div class="cta__orbit" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="eyebrow reveal">Get in touch</p>
+      <h2 class="h-sec lines" data-lines>
+        <span class="line" style="--i:0"><span>Ready when</span></span>
+        <span class="line" style="--i:1"><span>you are</span></span>
+      </h2>
+      <div class="cta__contact reveal" style="--i:1">
+        <a class="cta__link" href="mailto:James@orbitstudio.nl" aria-label="Email James@orbitstudio.nl">
+          <span class="cta__label" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 7 12 13l8.5-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="cta__value">James@orbitstudio.nl</span>
+        </a>
+        <a class="cta__link" href="tel:+31649827238" aria-label="Call 06 49 82 72 38">
+          <span class="cta__label" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6.4 3.5h3l1.5 4-2.1 1.5a12.5 12.5 0 0 0 6.2 6.2l1.5-2.1 4 1.5v3a2 2 0 0 1-2.2 2A17.5 17.5 0 0 1 4.4 5.7a2 2 0 0 1 2-2.2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>
+          <span class="cta__value">06 49 82 72 38</span>
+        </a>
+        <a class="cta__link" href="https://wa.me/31649827238" target="_blank" rel="noopener" aria-label="WhatsApp 06 49 82 72 38">
+          <span class="cta__label" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3.5 20.5l1.3-4.4A8.2 8.2 0 1 1 8 19.3l-4.5 1.2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9.2 8.4c.3-.1.6 0 .8.3l.7 1.2c.1.3.1.5-.1.7l-.5.5a5.6 5.6 0 0 0 2.8 2.8l.5-.5c.2-.2.4-.2.7-.1l1.2.7c.3.2.4.5.3.8-.3.9-1.2 1.4-2.1 1.2a8 8 0 0 1-5.5-5.5c-.2-.9.3-1.8 1.2-2.1z" fill="currentColor"/></svg></span>
+          <span class="cta__value">06 49 82 72 38</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════ ROUTE: LEGAL  (#legal / #terms / #privacy) ══════════ -->
+<div class="route lg" id="route-legal">
+  <div class="wrap">
+    <div class="lg__head">
+      <p class="lg__eyebrow">Legal</p>
+      <h1>Legal</h1>
+      <p class="lg__meta">Version 1.0 · Last updated 16 August 2026</p>
+      <p class="lg__lead">Our terms and conditions and our privacy policy, both on this page.</p>
+      <nav class="lg__tabs" aria-label="Documents">
+        <a href="#terms" data-tab>Terms &amp; Conditions</a>
+        <a href="#privacy" data-tab>Privacy Policy</a>
+      </nav>
+    </div>
+
+    <article class="lg__part" id="terms">
+      <p class="lg__partmeta">Part one</p>
+      <h2>Terms &amp; Conditions</h2>
+      <p class="lg__partlead">These terms apply to every quote and order we issue and to every assignment we carry out as 3DGS Orbit Studio. They are written for business clients, mainly estate agents and property owners in the Netherlands.</p>
+      <div class="lg__grid">
+      <nav class="lg__toc" aria-label="On this page">
+        <h2>On this page</h2>
+        <ol>
+          <li><a href="#s1">Who we are</a></li>
+          <li><a href="#s2">Scope</a></li>
+          <li><a href="#s3">Quotes and prices</a></li>
+          <li><a href="#s4">Booking and access</a></li>
+          <li><a href="#s5">Flying and weather</a></li>
+          <li><a href="#s6">Delivery</a></li>
+          <li><a href="#s7">Licence and ownership</a></li>
+          <li><a href="#s8">Payment</a></li>
+          <li><a href="#s9">Cancellation</a></li>
+          <li><a href="#s10">Privacy on site</a></li>
+          <li><a href="#s11">Liability</a></li>
+          <li><a href="#s12">Complaints</a></li>
+          <li><a href="#s13">Governing law</a></li>
+        </ol>
+      </nav>
+
+      <div class="lg__body">
+
+        <section id="s1">
+          <h2>Who we are</h2>
+          <dl>
+            <dt>Legal name</dt><dd>3DGS Orbit Studio</dd>
+            <dt>Trade name</dt><dd>Orbit Studio</dd>
+            <dt>KVK</dt><dd>42080166</dd>
+            <dt>BTW</dt><dd>NL869615002B01</dd>
+            <dt>Email</dt><dd><a href="mailto:James@orbitstudio.nl">James@orbitstudio.nl</a></dd>
+            <dt>Phone</dt><dd>06 49 82 72 38</dd>
+          </dl>
+          <p>In these terms, "we" and "us" mean 3DGS Orbit Studio. "You" means the client who accepts a quote or places an order.</p>
+        </section>
+
+        <section id="s2">
+          <h2>Scope</h2>
+          <p>These terms apply to every offer, quote, order and assignment between us, unless we have agreed something different in writing. Your own purchasing terms do not apply, even if we do not object to them explicitly.</p>
+          <p>If any part of these terms turns out to be invalid, the rest stays in force and we replace the invalid part with something as close to it as the law allows.</p>
+        </section>
+
+        <section id="s3">
+          <h2>Quotes and prices</h2>
+          <p>Prices start at <strong>€99</strong>. The final price depends on the property: the size of the plot, how much of the exterior needs covering, and how complex the site is to fly and process.</p>
+          <p>We offer two payment models. Which one applies is stated in your quote:</p>
+          <ul>
+            <li><strong>One-off fee.</strong> A fixed amount agreed before we start, invoiced after delivery of the finished scan.</li>
+            <li><strong>Percentage of the sale.</strong> Between 0.1% and 0.25% of the property's sale value, invoiced once the sale has completed at the notary.</li>
+          </ul>
+          <p>Quotes are valid for 30 days unless stated otherwise. All prices are exclusive of BTW. Prices may change for future assignments and during promotional periods; the price in your accepted quote is the one that applies to that assignment.</p>
+        </section>
+
+        <section id="s4">
+          <h2>Booking and access</h2>
+          <p>You send us an address and a time window. We check the airspace and confirm a slot. By booking, you confirm that:</p>
+          <ul>
+            <li>you own the property or have the owner's permission for us to scan it;</li>
+            <li>we can access the site and the area immediately around it at the agreed time;</li>
+            <li>you have told us about anything on site that affects safety or access, such as construction work, animals or restricted areas.</li>
+          </ul>
+          <p>If we arrive and cannot carry out the scan for a reason on your side, we may charge the call-out costs and reschedule.</p>
+        </section>
+
+        <section id="s5">
+          <h2>Flying and weather</h2>
+          <p>Drone flights are subject to Dutch and EU drone rules and to local airspace restrictions. We fly only where and when it is legal and safe to do so.</p>
+          <p>Rain, strong wind, poor light or a late airspace restriction can make a flight impossible. If that happens we reschedule to the next suitable slot at no extra charge. We are not liable for costs you incur because a scan had to be moved.</p>
+        </section>
+
+        <section id="s6">
+          <h2>Delivery</h2>
+          <p>We aim to deliver the finished viewer within one week of the scan. This is a target, not a hard deadline, unless we have agreed a fixed delivery date in writing.</p>
+          <p>Delivery consists of a hosted 3D viewer and an embed link or embed code you can place on your listing page. We host the viewer; you place it.</p>
+          <p>If part of the exterior could not be captured for legal, safety or physical reasons, we tell you before delivery and, where relevant, adjust the price.</p>
+        </section>
+
+        <section id="s7">
+          <h2>Licence and ownership</h2>
+          <p>We keep the intellectual property in the raw footage, the trained 3D model and the viewer software.</p>
+          <p>On full payment you receive a non-exclusive licence to use and embed the delivered viewer for marketing the property in question, for as long as the listing is live and for a reasonable period afterwards. You may share the link, embed it on portals and use stills from the viewer in your own marketing for that property.</p>
+          <p>You may not resell the scan, pass it to a third party as their own work, or attempt to extract, copy or re-host the underlying model without our written permission.</p>
+          <p>Unless you tell us otherwise in writing, we may use anonymised stills or clips from the scan in our own portfolio and marketing.</p>
+        </section>
+
+        <section id="s8">
+          <h2>Payment</h2>
+          <p>Invoices are payable within 14 days of the invoice date, unless the quote says otherwise.</p>
+          <ul>
+            <li>For a <strong>one-off fee</strong>, we invoice after delivery.</li>
+            <li>For a <strong>percentage of the sale</strong>, we invoice after the sale has completed. You tell us when completion has taken place and the sale value on which the percentage is calculated.</li>
+          </ul>
+          <p>If an invoice is not paid on time, statutory commercial interest and reasonable collection costs may be charged in line with Dutch law. We may also suspend or take down a hosted viewer while an invoice is overdue.</p>
+        </section>
+
+        <section id="s9">
+          <h2>Cancellation</h2>
+          <p>You can cancel or move a booked scan free of charge up to 24 hours before the agreed slot. Within 24 hours we may charge up to 50% of the agreed fee, or the full call-out cost if we are already on our way.</p>
+          <p>Once processing of the scan has started, the assignment cannot be cancelled free of charge.</p>
+          <div class="lg__callout">
+            <p>If you are a consumer rather than a business, you may have a statutory 14-day right of withdrawal. Where you ask us to start the work inside that period, you accept that the right of withdrawal ends once the work is complete.</p>
+          </div>
+        </section>
+
+        <section id="s10">
+          <h2>Privacy on site</h2>
+          <p>A scan of a property exterior can incidentally capture neighbouring buildings, vehicles or people. We take reasonable care to limit this and we blur or remove faces, number plates and other identifying details on request.</p>
+          <p>How we handle personal data is set out in our <a href="#privacy">Privacy Policy</a>.</p>
+        </section>
+
+        <section id="s11">
+          <h2>Liability</h2>
+          <p>We carry out each assignment to the best of our ability. Our liability for any damage arising from an assignment is limited to the amount invoiced for that assignment, or, where insurance pays out, to the amount actually paid out by our insurer.</p>
+          <p>We are not liable for indirect or consequential loss, including lost sales, missed viewings, reputational damage or loss of data.</p>
+          <p>These limits do not apply where the damage results from intent or deliberate recklessness on our part, or where the law does not permit them.</p>
+        </section>
+
+        <section id="s12">
+          <h2>Complaints</h2>
+          <p>If something is wrong with the delivered scan, tell us within 14 days of delivery at <a href="mailto:James@orbitstudio.nl">James@orbitstudio.nl</a>, describing the problem. We will respond within 14 days and, where the complaint is justified, repair, redo or credit the work.</p>
+        </section>
+
+        <section id="s13">
+          <h2>Governing law</h2>
+          <p>Dutch law applies to these terms and to every assignment between us. Disputes we cannot resolve together are submitted to the competent court in the district of Zeeland-West-Brabant, unless the law requires a different court.</p>
+          <p>We may update these terms. The version that applies to an assignment is the one published when the quote was accepted.</p>
+        </section>
+
+      </div>
+      </div>
+    </article>
+
+    <article class="lg__part" id="privacy">
+      <p class="lg__partmeta">Part two</p>
+      <h2>Privacy Policy</h2>
+      <p class="lg__partlead">This policy explains what personal data 3DGS Orbit Studio collects, why we collect it, how long we keep it and what rights you have. It follows the GDPR, known in the Netherlands as the AVG.</p>
+      <div class="lg__grid">
+      <nav class="lg__toc" aria-label="On this page">
+        <h2>On this page</h2>
+        <ol>
+          <li><a href="#p1">Controller</a></li>
+          <li><a href="#p2">What we collect</a></li>
+          <li><a href="#p3">Why, and on what basis</a></li>
+          <li><a href="#p4">Drone footage</a></li>
+          <li><a href="#p5">How long we keep it</a></li>
+          <li><a href="#p6">Who we share it with</a></li>
+          <li><a href="#p7">Outside the EEA</a></li>
+          <li><a href="#p8">Cookies</a></li>
+          <li><a href="#p9">Security</a></li>
+          <li><a href="#p10">Your rights</a></li>
+          <li><a href="#p11">Complaints</a></li>
+          <li><a href="#p12">Changes</a></li>
+        </ol>
+      </nav>
+
+      <div class="lg__body">
+
+        <section id="p1">
+          <h2>Controller</h2>
+          <p>3DGS Orbit Studio is the controller for the personal data described here.</p>
+          <dl>
+            <dt>Legal name</dt><dd>3DGS Orbit Studio</dd>
+            <dt>Trade name</dt><dd>Orbit Studio</dd>
+            <dt>KVK</dt><dd>42080166</dd>
+            <dt>BTW</dt><dd>NL869615002B01</dd>
+            <dt>Email</dt><dd><a href="mailto:James@orbitstudio.nl">James@orbitstudio.nl</a></dd>
+            <dt>Phone</dt><dd>06 49 82 72 38</dd>
+          </dl>
+          <p>We have not appointed a data protection officer. For anything about your data, email us directly.</p>
+        </section>
+
+        <section id="p2">
+          <h2>What we collect</h2>
+          <h3>When you contact us</h3>
+          <ul>
+            <li>your name, email address and phone number;</li>
+            <li>the company you work for;</li>
+            <li>the content of your message.</li>
+          </ul>
+          <h3>When you become a client</h3>
+          <ul>
+            <li>the property address and details needed to plan the scan;</li>
+            <li>billing details, invoice history and payment status;</li>
+            <li>correspondence about the assignment.</li>
+          </ul>
+          <h3>From the scan itself</h3>
+          <ul>
+            <li>drone and camera footage of the property exterior, which may incidentally include people, vehicles or neighbouring buildings;</li>
+            <li>the location and time of the flight, and flight logs kept for aviation compliance.</li>
+          </ul>
+          <h3>From this website</h3>
+          <p>We keep basic server logs, including IP address, browser type and pages visited, for security and to keep the site working.</p>
+        </section>
+
+        <section id="p3">
+          <h2>Why, and on what basis</h2>
+          <ul>
+            <li><strong>To answer your enquiry and prepare a quote</strong> — necessary for steps taken at your request before entering a contract.</li>
+            <li><strong>To carry out the assignment</strong>, plan the flight, build and host the viewer — performance of a contract.</li>
+            <li><strong>To invoice and keep our financial records</strong> — legal obligation under Dutch tax law.</li>
+            <li><strong>To keep flight logs and meet drone regulations</strong> — legal obligation.</li>
+            <li><strong>To keep our site secure and improve our service</strong>, and to show anonymised work in our portfolio — legitimate interest. You can object to portfolio use at any time.</li>
+          </ul>
+        </section>
+
+        <section id="p4">
+          <h2>Drone footage</h2>
+          <p>Our scans are of building exteriors, not of people. Even so, a capture can incidentally record passers-by, cars, gardens or windows of neighbouring properties.</p>
+          <p>We limit this by flying tight to the property, capturing outside busy hours where possible, and removing or blurring identifying details such as faces and number plates before delivery.</p>
+          <p>If you appear in a published scan and want to be removed or blurred, email us and we will do it. We treat these requests as a priority.</p>
+        </section>
+
+        <section id="p5">
+          <h2>How long we keep it</h2>
+          <ul>
+            <li><strong>Invoices and financial records</strong> — 7 years, as required by the Dutch tax authority.</li>
+            <li><strong>Client and project files</strong> — for the duration of the relationship and up to 2 years afterwards.</li>
+            <li><strong>Enquiries that do not become assignments</strong> — up to 12 months.</li>
+            <li><strong>Raw footage</strong> — up to 12 months after delivery, so we can rebuild the model if needed, then deleted.</li>
+            <li><strong>Published viewers</strong> — until you ask us to take them down, or the licence ends.</li>
+            <li><strong>Server logs</strong> — up to 12 months.</li>
+          </ul>
+        </section>
+
+        <section id="p6">
+          <h2>Who we share it with</h2>
+          <p>We do not sell personal data. We share it only with parties that help us run the business, each under a processing agreement where the law requires one:</p>
+          <ul>
+            <li>our website and viewer hosting provider;</li>
+            <li>our email provider;</li>
+            <li>our accountant and invoicing software;</li>
+            <li>authorities, where we are legally obliged to disclose.</li>
+          </ul>
+        </section>
+
+        <section id="p7">
+          <h2>Outside the EEA</h2>
+          <p>We prefer providers inside the EU. Where a provider processes data outside the European Economic Area, we rely on an adequacy decision or on the European Commission's Standard Contractual Clauses.</p>
+        </section>
+
+        <section id="p8">
+          <h2>Cookies</h2>
+          <p>Our own site uses only what is strictly necessary to load and display pages. We do not use advertising or tracking cookies, and we do not profile visitors.</p>
+          <p>Embedded 3D viewers may set technical storage needed to render the scene. Fonts are loaded from Google Fonts, which means your IP address is visible to Google when a page loads.</p>
+        </section>
+
+        <section id="p9">
+          <h2>Security</h2>
+          <p>We use encrypted connections, access control on our accounts and devices, and keep raw footage on storage that is not publicly reachable. No system is perfect; if a data breach occurs that is likely to affect you, we will inform you and the Autoriteit Persoonsgegevens as the law requires.</p>
+        </section>
+
+        <section id="p10">
+          <h2>Your rights</h2>
+          <p>Under the AVG you can ask us to:</p>
+          <ul>
+            <li>give you a copy of the personal data we hold about you;</li>
+            <li>correct data that is wrong or incomplete;</li>
+            <li>delete your data, where we have no obligation to keep it;</li>
+            <li>restrict how we use it;</li>
+            <li>transfer it to you or another provider in a common format;</li>
+            <li>stop processing based on legitimate interest, by objecting.</li>
+          </ul>
+          <p>Email <a href="mailto:James@orbitstudio.nl">James@orbitstudio.nl</a> and we will respond within one month. We may ask you to confirm your identity first, so we do not hand data to the wrong person.</p>
+        </section>
+
+        <section id="p11">
+          <h2>Complaints</h2>
+          <p>If you are unhappy with how we handle your data, tell us first so we can put it right. You also have the right to complain to the Dutch supervisory authority, the Autoriteit Persoonsgegevens, at <a href="https://autoriteitpersoonsgegevens.nl" target="_blank" rel="noopener">autoriteitpersoonsgegevens.nl</a>.</p>
+        </section>
+
+        <section id="p12">
+          <h2>Changes</h2>
+          <p>We may update this policy as the business changes. The version date at the top shows when it was last revised.</p>
+        </section>
+
+      </div>
+      </div>
+    </article>
+
+  </div>
+</div>
+
+<!-- ══════════ ROUTE: EXAMPLES  (#examples) ══════════ -->
+<div class="route" id="route-examples">
+  <a class="exit" href="#top">← Back to site</a>
+  <iframe id="exampleFrame" title="Example listing page with an embedded 3D scan"></iframe>
+</div>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer class="ftr">
+  <div class="wrap">
+    <p class="ftr__word">Orbit Studio</p>
+    <div class="ftr__top">
+      <div>
+        <h4>Orbit Studio</h4>
+        <p class="body-lg" style="max-width:32ch">Exterior 3D property scans, delivered as a browser viewer you can embed in any listing.</p>
+        <dl class="ftr__legal">
+          <dt>Legal name</dt><dd>3DGS Orbit Studio</dd>
+          <dt>KVK</dt><dd>42080166</dd>
+          <dt>BTW</dt><dd>NL869615002B01</dd>
+        </dl>
+      </div>
+      <div><h4>Product</h4><ul><li><a href="#work">Our Work</a></li><li><a href="#what">Ways to use</a></li><li><a href="#process">Process &amp; Pricing</a></li><li><a href="#examples">Examples</a></li></ul></div>
+      <div><h4>Company</h4><ul><li><a href="#vision">Vision &amp; Mission</a></li><li><a href="#cta">Contact</a></li></ul></div>
+      <div><h4>Legal</h4><ul><li><a href="#terms">Terms &amp; Conditions</a></li><li><a href="#privacy">Privacy Policy</a></li><li><a href="#cta">Contact</a></li></ul></div>
+    </div>
+    <div class="ftr__bot">
+      <span>© 2026 3DGS Orbit Studio</span>
+      <span>Built in Breda</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var clamp = function(v,a,b){ return v<a?a:(v>b?b:v); };
+
+  /* ---------- reveals ---------- */
+  var all      = [].slice.call(document.querySelectorAll('.reveal, [data-lines]'));
+  var heroEls  = all.filter(function(el){ return  el.closest('#hero'); });
+  var revealEls= all.filter(function(el){ return !el.closest('#hero'); });
+
+  if(!reduce){
+    all.forEach(function(el){ el.classList.add('is-hidden'); });
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.remove('is-hidden'); io.unobserve(e.target); }
+      });
+    },{threshold:.12, rootMargin:'0px 0px -8% 0px'});
+    revealEls.forEach(function(el){ io.observe(el); });
+  }
+
+  /* ---------- hero load sequence (plays once per session) ---------- */
+  function showHero(){ heroEls.forEach(function(el){ el.classList.remove('is-hidden'); }); }
+  var introDone = false;
+  try{ introDone = sessionStorage.getItem('introPlayed') === '1'; }catch(err){}
+  if(reduce || introDone){
+    showHero();
+  }else{
+    if(document.readyState === 'complete'){ setTimeout(showHero, 120); }
+    else{ window.addEventListener('load', function(){ setTimeout(showHero, 120); }); }
+    setTimeout(showHero, 2500); /* safety net if load never fires */
+    try{ sessionStorage.setItem('introPlayed','1'); }catch(err){}
+  }
+
+  /* ---------- header ---------- */
+  var hdr = document.getElementById('hdr');
+  var hero = document.getElementById('hero');
+
+  /* ---------- mobile menu ---------- */
+  var burger = document.getElementById('burger');
+  var menu = document.getElementById('menu');
+
+  /* ---------- island dropdown ---------- */
+  var isleBtn = document.getElementById('isleBtn');
+  var isleMenu = document.getElementById('isleMenu');
+  function closeIsle(){
+    document.body.classList.remove('isle-open');
+    if(isleBtn) isleBtn.setAttribute('aria-expanded','false');
+  }
+  if(isleBtn){
+    isleBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var open = document.body.classList.toggle('isle-open');
+      isleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    isleMenu.addEventListener('click', function(e){
+      if(e.target.tagName === 'A') closeIsle();
+    });
+    document.addEventListener('click', function(e){
+      if(!e.target.closest('.hdr__right')) closeIsle();
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape') closeIsle();
+    });
+  }
+  burger.addEventListener('click', function(){
+    var open = document.body.classList.toggle('menu-open');
+    burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  menu.addEventListener('click', function(e){
+    if(e.target.tagName === 'A'){
+      document.body.classList.remove('menu-open');
+      burger.setAttribute('aria-expanded','false');
+    }
+  });
+
+  /* ---------- scroll scenes ---------- */
+  var featTexts = [].slice.call(document.querySelectorAll('[data-feat-text]'));
+  var featNarrow = window.matchMedia('(max-width: 700px)');
+  var heroBg  = document.querySelector('[data-hero-bg]');
+  var heroIn  = document.querySelector('[data-hero-inner]');
+  var heroModel = document.getElementById('model-slot');
+  var heroGrid  = document.querySelector('.hero__grid');
+  var heroStage = document.querySelector('[data-hero-stage]');
+  var heroDrift = [heroBg, heroIn];                     /* lag only        */
+  var heroZoom  = [heroGrid, heroStage, heroModel];     /* lag + contract  */
+  var HERO_LAG    = 0.22;   /* 0 = moves with the page, 1 = stays put */
+  var HERO_SHRINK = 0.22;   /* grid + model box contract to 78%       */
+  /* "Ways to use the 3D model": how far a picture slides inside its
+     own frame across one full pass, as a % of the picture's height.
+     The 180% overhang in the CSS caps this at about 80. */
+  var FEAT_MEDIA  = 36;
+  var parallaxEls = [].slice.call(document.querySelectorAll('[data-parallax]'));
+  var featChapters = [].slice.call(document.querySelectorAll('.feat__chapter'))
+    .map(function(ch){
+      return {
+        box:   ch,
+        media: [].slice.call(ch.querySelectorAll(
+                 '.feat__side .media > img, .feat__side .media > video'))
+      };
+    })
+    .filter(function(ch){ return ch.media.length; });
+
+  function frame(){
+    var vh = window.innerHeight;
+
+    /* hero drifts as one rigid unit: photo, grid, model box, readouts and
+       copy all lag behind the scroll by the same amount, so the composition
+       holds together instead of coming apart. */
+    if(heroBg){
+      var hp  = clamp(window.scrollY / vh, 0, 1);
+      var lag  = 'translate3d(0,' + (hp * vh * HERO_LAG) + 'px,0)';
+      var zoom = lag + ' scale(' + (1 - hp * HERO_SHRINK) + ')';
+      for(var h = 0; h < heroDrift.length; h++){
+        if(heroDrift[h]) heroDrift[h].style.transform = lag;
+      }
+      for(var z = 0; z < heroZoom.length; z++){
+        if(heroZoom[z]) heroZoom[z].style.transform = zoom;
+      }
+    }
+
+    /* feature rails: headline drifts slower than its image, and fades
+       out as its chapter leaves the middle of the screen */
+    if(!featNarrow.matches){
+      for(var i = 0; i < featTexts.length; i++){
+        var t  = featTexts[i];
+        var tb = t.getBoundingClientRect();
+        var d  = (vh / 2) - (tb.top + tb.height / 2);   /* + when above centre */
+        t.style.transform = 'translate3d(0,' + (d * 0.34) + 'px,0)';
+        t.style.opacity   = String(clamp(1 - Math.abs(d) / (vh * 0.62), 0, 1));
+      }
+
+      /* Driven off the chapter's own rect, which is never transformed,
+         so a measurement can never feed back into the transform it
+         produces. p runs -0.5 -> +0.5 across one full pass. */
+      for(var c = 0; c < featChapters.length; c++){
+        var ch = featChapters[c], cb = ch.box.getBoundingClientRect();
+        if(cb.bottom < 0 || cb.top > vh) continue;
+        var p = clamp((vh - cb.top) / (vh + cb.height), 0, 1) - 0.5;
+        for(var m = 0; m < ch.media.length; m++){
+          ch.media[m].style.setProperty('--py', (p * FEAT_MEDIA) + '%');
+        }
+      }
+    }
+
+    /* section parallax */
+    parallaxEls.forEach(function(el){
+      var b = el.getBoundingClientRect();
+      var q = clamp((vh - b.top) / (vh + b.height), 0, 1);
+      el.style.transform = 'translate3d(0,' + ((q - 0.5) * 12) + '%,0)';
+    });
+
+    /* header state */
+    hdr.classList.toggle('is-solid', hero ? window.scrollY > hero.offsetHeight - 90 : true);
+    hdr.classList.toggle('is-island', window.scrollY > 80);
+    hdr.classList.toggle('is-compact', window.scrollY > 300);
+    if(window.scrollY <= 300) closeIsle();
+  }
+
+  var ticking = false;
+  function onScroll(){
+    if(ticking) return;
+    ticking = true;
+    requestAnimationFrame(function(){ frame(); ticking = false; });
+  }
+
+  if(!reduce){
+    frame();
+    window.addEventListener('scroll', onScroll, {passive:true});
+    window.addEventListener('resize', frame);
+    window.addEventListener('load', frame);
+  }else{
+    hdr.classList.toggle('is-solid', !hero);
+    window.addEventListener('scroll', function(){
+      hdr.classList.toggle('is-solid', hero ? window.scrollY > hero.offsetHeight - 90 : true);
+      hdr.classList.toggle('is-island', window.scrollY > 80);
+      hdr.classList.toggle('is-compact', window.scrollY > 300);
+    }, {passive:true});
+  }
+
+  /* ---------- steps ---------- */
+  var steps = [].slice.call(document.querySelectorAll('[data-step]'));
+  function setActiveStep(i){
+    steps.forEach(function(s,n){ s.classList.toggle('is-active', n === i); });
+  }
+  if(reduce){ steps.forEach(function(s){ s.classList.add('is-active'); }); }
+
+  /* ---------- vertical timeline rail ---------- */
+  var railEl  = document.querySelector('.rail');
+  var stepList = document.querySelector('.steps__list');
+  if(railEl && stepList){
+    var railDots = [].slice.call(railEl.querySelectorAll('.rail__dot'));
+    var railTick = false, lastStep = -1;
+    function railUpdate(){
+      railTick = false;
+      var r = stepList.getBoundingClientRect();
+      var mark = window.innerHeight * 0.5;
+      var p = clamp((mark - r.top) / (r.height || 1), 0, 1);
+      railEl.style.setProperty('--p', p.toFixed(4));
+      railDots.forEach(function(d,n){
+        d.classList.toggle('is-past', p >= n / (railDots.length - 1) - 0.001);
+      });
+      if(!reduce && steps.length){
+        var idx = 0;
+        steps.forEach(function(s,n){
+          if(s.getBoundingClientRect().top <= mark + 4) idx = n;
+        });
+        if(idx !== lastStep){ lastStep = idx; setActiveStep(idx); }
+      }
+    }
+    window.addEventListener('scroll', function(){
+      if(railTick) return;
+      railTick = true;
+      requestAnimationFrame(railUpdate);
+    }, {passive:true});
+    window.addEventListener('resize', railUpdate);
+    railUpdate();
+  }
+
+  /* ---------- "why" scroll stage: word reveal, then focus each point ---------- */
+  var whyTrack = document.querySelector('.why__track');
+  if(whyTrack){
+    var whyWords = [].slice.call(whyTrack.querySelectorAll('.why__h .w'));
+    var whyStats = [].slice.call(whyTrack.querySelectorAll('.stat'));
+    var whyTick = false, whyLastFocus = -2;
+    function whyUpdate(){
+      whyTick = false;
+      var small = window.innerWidth <= 900;
+      if(small || reduce){
+        whyWords.forEach(function(w){ w.classList.add('is-on'); });
+        whyStats.forEach(function(s){ s.classList.add('is-on'); s.classList.remove('is-focus'); });
+        return;
+      }
+      var r = whyTrack.getBoundingClientRect();
+      var span = (r.height - window.innerHeight) || 1;
+      var p = clamp(-r.top / span, 0, 1);
+
+      /* 0 -> .30 : words arrive one at a time */
+      var wp = clamp(p / 0.26, 0, 1);
+      var shown = Math.round(wp * whyWords.length);
+      whyWords.forEach(function(w,n){ w.classList.toggle('is-on', n < shown); });
+
+      /* .36 -> 1 : points light up in turn and stay lit */
+      var f = Math.floor((p - 0.32) / 0.21);
+      if(p < 0.32) f = -1;
+      if(f > whyStats.length - 1) f = whyStats.length;   /* past the last: none enlarged */
+      if(f !== whyLastFocus){
+        whyLastFocus = f;
+        whyStats.forEach(function(s,n){
+          s.classList.toggle('is-on', n <= f);
+          s.classList.toggle('is-focus', n === f);
+        });
+      }
+    }
+    window.addEventListener('scroll', function(){
+      if(whyTick) return;
+      whyTick = true;
+      requestAnimationFrame(whyUpdate);
+    }, {passive:true});
+    window.addEventListener('resize', whyUpdate);
+    whyUpdate();
+  }
+
+  /* ---------- counters ---------- */
+  var counters = [].slice.call(document.querySelectorAll('[data-count]'));
+  if(counters.length){
+    if(reduce){
+      counters.forEach(function(el){ el.textContent = el.getAttribute('data-count'); });
+    }else{
+      var cio = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(!e.isIntersecting) return;
+          cio.unobserve(e.target);
+          var el = e.target, target = +el.getAttribute('data-count'), t0 = performance.now(), dur = 1400;
+          (function tick(now){
+            var p = clamp((now - t0) / dur, 0, 1);
+            var eased = 1 - Math.pow(1 - p, 4);
+            el.textContent = Math.round(target * eased).toLocaleString('en-US');
+            if(p < 1) requestAnimationFrame(tick);
+          })(t0);
+        });
+      },{threshold:.6});
+      counters.forEach(function(el){ cio.observe(el); });
+    }
+  }
+
+  /* ---------- work cards: load the live scan on click ---------- */
+  function loadScan(slot){
+    if(slot.classList.contains('is-live')) return;
+    var f = document.createElement('iframe');
+    f.src = 'https://superspl.at/s?id=' + slot.getAttribute('data-scan');
+    f.title = slot.getAttribute('data-title') || '3D scan';
+    f.setAttribute('allow', 'fullscreen; xr-spatial-tracking');
+    f.setAttribute('loading', 'lazy');
+    slot.appendChild(f);
+    slot.classList.add('is-live');
+  }
+  /* On a phone an embedded viewer is a trap: the iframe takes the touch
+     events and the page can no longer be scrolled past it, and three WebGL
+     canvases on one page is more than a phone should carry. Below 700px the
+     poster stays put and a tap opens the scan full screen instead. */
+  var scanNarrow = window.matchMedia('(max-width: 700px)');
+  [].slice.call(document.querySelectorAll('[data-scan]')).forEach(function(slot){
+    if(slot.hasAttribute('data-autoload') && !scanNarrow.matches){
+      /* auto: load once it scrolls into view, no click needed */
+      var aio = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(!e.isIntersecting) return;
+          aio.unobserve(e.target);
+          loadScan(e.target);
+        });
+      },{rootMargin:'200px'});
+      aio.observe(slot);
+      return;
+    }
+    slot.addEventListener('click', function(e){
+      if(scanNarrow.matches){
+        if(slot.closest('a[href]')) return;   /* the card link already opens it */
+        e.preventDefault();
+        window.open('https://superspl.at/s?id=' + slot.getAttribute('data-scan'),
+                    '_blank', 'noopener');
+        return;
+      }
+      if(slot.classList.contains('is-live')) return;
+      e.preventDefault();
+      loadScan(slot);
+    });
+  });
+
+  /* ---------- magnetic primary buttons (desktop only) ---------- */
+  if(!reduce && window.matchMedia('(hover:hover)').matches){
+    [].slice.call(document.querySelectorAll('.btn:not(.reveal)')).forEach(function(el){
+      el.addEventListener('pointermove', function(e){
+        var r = el.getBoundingClientRect();
+        var x = (e.clientX - (r.left + r.width/2)) * 0.18;
+        var y = (e.clientY - (r.top + r.height/2)) * 0.28;
+        el.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+      });
+      el.addEventListener('pointerleave', function(){ el.style.transform = 'translate(0,0)'; });
+    });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  /* the frames themselves are given a src by the router script at the
+     bottom of this file; here we only size them and gate interaction */
+  var frames = [].slice.call(document.querySelectorAll('iframe[data-listing]'));
+
+  /* render each frame at desktop width, then scale it to fit its column,
+     on a phone as well: the point of the preview is the whole listing page,
+     not a readable slice of it */
+  var BASE = 1280;
+  function fit(){
+    frames.forEach(function(f){
+      var box = f.parentNode, w = box.clientWidth, h = box.clientHeight;
+      if(!w || !h) return;
+      var s = w / BASE;
+      f.style.setProperty('--fw', BASE + 'px');
+      f.style.setProperty('--fh', Math.round(h / s) + 'px');
+      f.style.setProperty('--fs', s);
+    });
+  }
+  fit();
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+
+  /* the previews are stills, so a click opens the real listing page
+     rather than trying to make a panel scaled to ~55% interactive */
+  frames.forEach(function(f){
+    var box = f.parentNode;
+    var sh  = document.createElement('div');
+    sh.className = 'feat__shield';
+    sh.innerHTML = '<span>Click to explore</span>';
+    sh.addEventListener('click', function(){ location.hash = 'examples'; });
+    box.appendChild(sh);
+  });
+})();
+</script>
+
+<!-- ══════ EXAMPLE LISTING PAGE ══════
+     The whole example estate agent page lives in the script tag below.
+     It is turned into a blob URL at runtime and fed to the two preview
+     frames and to the #examples route. -->
+<script type="text/plain" id="mock-listing"><!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Huize Maenstein, Maensteinlaan 3 Weldervoort | Van Namaken Makelaar</title>
+<style>
+:root{
+  --ink:#131a20;
+  --ink-70:#4a565f;
+  --ink-45:#7b8791;
+  --line:#e2ded6;
+  --paper:#ffffff;
+  --sand:#f6f4f0;
+  --sand-2:#ece7df;
+  --accent:#1f5c4c;
+  --accent-soft:#e7efec;
+  --r:3px;
+  --wrap:1240px;
+  --font:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --serif:"Playfair Display",Georgia,"Times New Roman",serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+h1,h2,h3,h4{margin:0;font-weight:500;line-height:1.15}
+p{margin:0 0 1em}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-45);font-weight:600;margin:0 0 10px}
+.ph{position:relative;background:var(--sand-2);background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.5) 0 12px,transparent 12px 24px);display:flex;align-items:center;justify-content:center;color:var(--ink-45);font-size:11px;letter-spacing:.14em;text-transform:uppercase;overflow:hidden}
+
+/* topbalk + nav */
+.ai-notice{background:#f4e6c8;color:#5d4a1c;border-bottom:1px solid #e2cd9f;font-size:12.5px;line-height:1.5}
+.ai-notice .wrap{padding-top:11px;padding-bottom:11px;text-align:center}
+.topbar{background:var(--ink);color:#fff;font-size:12.5px}
+.topbar .wrap{display:flex;justify-content:space-between;align-items:center;height:38px;gap:20px}
+.topbar a{text-decoration:none;opacity:.75}
+.topbar a:hover{opacity:1}
+.topbar .tb-r{display:flex;gap:22px}
+.langsw a{opacity:.6}
+.langsw a.on{opacity:1;text-decoration:underline;text-underline-offset:3px}
+
+.nav{position:sticky;top:0;z-index:50;background:var(--paper);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:78px;gap:24px}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none}
+.logo .mark{width:36px;height:36px;border:1.5px solid var(--accent);border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--accent)}
+.logo b{font-family:var(--serif);font-size:20px;font-weight:500}
+.logo i{display:block;font-style:normal;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-45)}
+.menu{display:flex;gap:28px;list-style:none;margin:0;padding:0;font-size:14px}
+.menu a{text-decoration:none;padding:6px 0;border-bottom:1.5px solid transparent}
+.menu a:hover{border-color:var(--accent)}
+.menu .on{border-color:var(--accent);color:var(--accent)}
+.nav-cta{border:1px solid var(--ink);background:transparent;padding:11px 20px;border-radius:var(--r);font-size:13.5px}
+.nav-cta:hover{background:var(--ink);color:#fff}
+.burger{display:none;background:none;border:0;font-size:22px;line-height:1}
+
+.crumbs{font-size:12.5px;color:var(--ink-45);padding:18px 0 14px}
+.crumbs a{text-decoration:none}
+.crumbs a:hover{color:var(--accent)}
+.crumbs span{margin:0 8px;opacity:.5}
+
+/* galerij */
+.gallery{display:grid;grid-template-columns:2fr 1fr;gap:8px;height:560px}
+.gallery .g-side{display:grid;grid-template-rows:1fr 1fr;gap:8px}
+.gallery figure{margin:0;position:relative;overflow:hidden;background:var(--sand-2)}
+.gallery img{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%!important;max-width:none;object-fit:cover;transition:transform .6s cubic-bezier(.2,.7,.3,1)}
+.gallery figure:hover img{transform:scale(1.03)}
+.g-badge{position:absolute;top:18px;left:18px;z-index:2;background:var(--accent);color:#fff;font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:7px 12px;font-weight:600}
+
+.thumbs{display:grid;grid-template-columns:repeat(9,1fr);gap:8px;margin-top:8px}
+.thumb{position:relative;height:74px;overflow:hidden;cursor:pointer;background:var(--sand-2)}
+.thumb img{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%!important;max-width:none;object-fit:cover;opacity:.72;transition:opacity .2s}
+.thumb:hover img,.thumb.sel img{opacity:1}
+.thumb.sel{outline:2px solid var(--accent);outline-offset:-2px}
+
+.viewer{position:relative;width:100%;height:560px;background:var(--sand-2);border:1px solid var(--line)}
+.viewer iframe{position:absolute;top:0;left:0;width:100%;height:100%!important;border:0;display:block}
+.viewer-note{font-size:12.5px;color:var(--ink-45);margin:10px 0 0}
+.viewer-note a{color:var(--accent)}
+.side-viewer{position:relative;height:300px;background:var(--sand-2);border-bottom:1px solid var(--line)}
+.side-viewer iframe{position:absolute;top:0;left:0;width:100%;height:100%!important;border:0;display:block}
+.side-viewer-in{padding:20px 26px 22px}
+.sv-head{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.sv-note{font-size:13.5px;color:var(--ink-70);margin:0;line-height:1.5}
+.sv-by{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:#b08a3e;margin:0 0 8px}
+
+@media (max-width:860px){.viewer{height:340px}}
+.mediabar{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.mediabar button{background:var(--sand);border:1px solid var(--line);border-radius:var(--r);padding:10px 16px;font-size:13px;color:var(--ink-70);display:flex;align-items:center;gap:8px}
+.mediabar button:hover{border-color:var(--accent);color:var(--accent)}
+.mediabar button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.mediabar .tag{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;background:var(--accent);color:#fff;padding:2px 6px}
+
+/* titel */
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;padding:38px 0 26px;border-bottom:1px solid var(--line)}
+.head h1{font-family:var(--serif);font-size:42px;letter-spacing:-.01em}
+.head .place{font-size:14px;color:var(--ink-70);margin-top:8px}
+.head .price{font-family:var(--serif);font-size:34px;white-space:nowrap;text-align:right}
+.head .price small{display:block;font-family:var(--font);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-45);margin-top:6px;font-weight:600}
+.pill{display:inline-block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;padding:6px 11px;background:var(--accent-soft);color:var(--accent);margin-bottom:14px}
+.pill+.pill{margin-left:6px;background:var(--sand-2);color:var(--ink-70)}
+
+.strip{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line);margin:0}
+.strip div{padding:24px 8px 24px 0}
+.strip dt{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-45);font-weight:600;margin-bottom:6px}
+.strip dd{margin:0;font-size:19px;font-family:var(--serif)}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:72px;padding:56px 0 80px;align-items:start}
+section.block{padding:0 0 46px}
+section.block h2{font-family:var(--serif);font-size:26px;margin-bottom:20px}
+.body-copy{color:var(--ink-70);max-width:68ch}
+.body-copy h4{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);margin:28px 0 10px}
+.body-copy ul{margin:0 0 1em;padding-left:18px}
+.body-copy li{margin-bottom:6px}
+.fade{position:relative;max-height:430px;overflow:hidden}
+.fade::after{content:"";position:absolute;inset:auto 0 0 0;height:130px;background:linear-gradient(to bottom,rgba(255,255,255,0),#fff)}
+.fade.open{max-height:none}
+.fade.open::after{display:none}
+.more-btn{background:none;border:0;border-bottom:1.5px solid var(--accent);color:var(--accent);padding:0 0 3px;font-size:14px;margin-top:6px}
+
+.specs{border-top:1px solid var(--line)}
+.specs details{border-bottom:1px solid var(--line)}
+.specs summary{list-style:none;cursor:pointer;padding:18px 0;display:flex;justify-content:space-between;align-items:center;font-size:13px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+.specs summary::-webkit-details-marker{display:none}
+.specs summary::after{content:"+";font-size:18px;color:var(--ink-45);font-weight:400}
+.specs details[open] summary::after{content:"–"}
+.specs table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14.5px}
+.specs th{text-align:left;font-weight:400;color:var(--ink-45);width:46%;padding:9px 12px 9px 0;vertical-align:top}
+.specs td{padding:9px 0;vertical-align:top}
+.specs tr+tr th,.specs tr+tr td{border-top:1px solid #f0ede8}
+
+.photogrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.photogrid figure{margin:0;overflow:hidden;position:relative;height:200px;background:var(--sand-2)}
+.photogrid img{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%!important;max-width:none;object-fit:cover;transition:transform .6s cubic-bezier(.2,.7,.3,1)}
+.photogrid figure:hover img{transform:scale(1.04)}
+.photogrid figcaption{position:absolute;left:0;bottom:0;right:0;padding:22px 12px 9px;color:#fff;font-size:12px;letter-spacing:.06em;background:linear-gradient(to top,rgba(0,0,0,.6),transparent)}
+
+.map{height:320px}
+.docs{display:grid;gap:10px}
+.doc{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--line);padding:16px 18px;text-decoration:none;border-radius:var(--r)}
+.doc:hover{border-color:var(--accent);background:var(--sand)}
+.doc small{color:var(--ink-45);font-size:12.5px}
+.doc b{font-weight:500}
+
+.side{position:sticky;top:100px;display:grid;gap:18px}
+.card{border:1px solid var(--line);border-radius:var(--r)}
+.card .card-in{padding:26px}
+.agent{display:flex;gap:16px;align-items:center;margin-bottom:20px}
+.agent .av{width:66px;height:66px;border-radius:50%;flex:none;background:var(--sand-2);display:grid;place-items:center;font-family:var(--serif);font-size:20px;color:var(--accent)}
+.agent b{display:block;font-size:16px;font-weight:500}
+.agent small{color:var(--ink-45);font-size:13px}
+.btn{display:block;width:100%;text-align:center;padding:15px 18px;border-radius:var(--r);text-decoration:none;font-size:14.5px;border:1px solid var(--ink)}
+.btn-primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn-primary:hover{background:var(--accent);border-color:var(--accent)}
+.btn-ghost{background:#fff;color:var(--ink);margin-top:10px}
+.btn-ghost:hover{background:var(--sand)}
+.contact-lines{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:14px;display:grid;gap:7px}
+.contact-lines a{color:var(--ink-70);text-decoration:none}
+.contact-lines a:hover{color:var(--accent)}
+.form{display:grid;gap:12px}
+.form label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-45);font-weight:600}
+.form input,.form textarea{width:100%;border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;font:inherit;font-size:14.5px;background:var(--sand)}
+.form input:focus,.form textarea:focus{outline:2px solid var(--accent);outline-offset:1px;background:#fff}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form textarea{min-height:96px;resize:vertical}
+.form .fine{font-size:11.5px;color:var(--ink-45);line-height:1.45}
+.share{display:flex;gap:8px}
+.share button{flex:1;border:1px solid var(--line);background:#fff;border-radius:var(--r);padding:11px;font-size:13px;color:var(--ink-70)}
+.share button:hover{border-color:var(--accent);color:var(--accent)}
+.viewings{font-size:14px;display:grid;gap:8px}
+.viewings div{display:flex;justify-content:space-between;border-bottom:1px solid #f0ede8;padding-bottom:8px}
+.viewings span{color:var(--ink-45)}
+
+.similar{background:var(--sand);border-top:1px solid var(--line);padding:72px 0}
+.similar h2{font-family:var(--serif);font-size:28px;margin-bottom:6px}
+.similar .sub{color:var(--ink-45);font-size:14px;margin-bottom:30px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;text-decoration:none;display:block}
+.pcard:hover{box-shadow:0 6px 26px rgba(19,26,32,.09)}
+.pc-media{position:relative;height:210px;overflow:hidden;background:var(--sand-2)}
+.pc-media img{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%!important;max-width:none;object-fit:cover}
+.pcard .ph{height:210px}
+.pcard .pc-in{padding:20px}
+.pcard .st{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--accent);margin-bottom:9px}
+.pcard h3{font-family:var(--serif);font-size:20px;margin-bottom:4px}
+.pcard .loc{font-size:13.5px;color:var(--ink-45);margin-bottom:14px}
+.pcard .meta{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:14px;font-size:13.5px;color:var(--ink-70)}
+.pcard .meta b{font-family:var(--serif);font-size:18px;font-weight:500;color:var(--ink)}
+.center{text-align:center;margin-top:36px}
+.link-lg{display:inline-block;border:1px solid var(--ink);padding:14px 30px;text-decoration:none;font-size:14px;border-radius:var(--r)}
+.link-lg:hover{background:var(--ink);color:#fff}
+
+.foot{background:var(--ink);color:#cfd6da;padding:64px 0 30px;font-size:14px}
+.foot a{color:#cfd6da;text-decoration:none}
+.foot a:hover{color:#fff}
+.foot .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;padding-bottom:44px;border-bottom:1px solid rgba(255,255,255,.14)}
+.foot h4{color:#fff;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px}
+.foot ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.foot .brand b{font-family:var(--serif);color:#fff;font-size:22px;font-weight:500;display:block;margin-bottom:12px}
+.foot .bottom{display:flex;justify-content:space-between;gap:20px;padding-top:22px;font-size:12.5px;color:#8b979f;flex-wrap:wrap}
+
+
+@media (max-width:1080px){
+  .main{grid-template-columns:1fr;gap:40px}
+  .side{position:static}
+  .strip{grid-template-columns:repeat(3,1fr)}
+  .strip div{border-bottom:1px solid #f0ede8}
+  .thumbs{grid-template-columns:repeat(6,1fr)}
+}
+@media (max-width:860px){
+  .menu,.nav-cta{display:none}
+  .burger{display:block}
+  .gallery{grid-template-columns:1fr;height:auto}
+  .gallery .g-main{height:300px}
+  .gallery .g-side{grid-template-columns:1fr 1fr;grid-template-rows:none;height:140px}
+  .head{flex-direction:column;align-items:flex-start;gap:18px}
+  .head h1{font-size:30px}
+  .head .price{text-align:left}
+  .cards,.photogrid{grid-template-columns:1fr}
+  .foot .cols{grid-template-columns:1fr 1fr}
+  .topbar .tb-l{display:none}
+  .thumbs{grid-template-columns:repeat(4,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ── EMBED MODE ────────────────────────────────────────────────
+   The Orbit Studio site loads this page in a small frame and
+   parks it on one spot: #embed-gallery opens the 3D tab in the
+   media block, #embed-side lands on the sidebar viewer card.
+   The page itself is not altered, it is only scrolled. Without a
+   hash nothing here applies. */
+html.embed{scroll-behavior:auto}
+html.embed .ai-notice{display:none}
+html.embed body{cursor:default}
+</style>
+</head>
+<body>
+
+<div class="ai-notice">
+  <div class="wrap">
+    * Deze pagina is een voorbeeld. Alle gegevens, teksten en beelden zijn met AI gemaakt om een woningpresentatie na te bootsen en te laten zien waar de 3D-modelviewer geplaatst kan worden. Er is geen echte woning en er wordt niets te koop aangeboden. *
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="wrap">
+    <div class="tb-l">Aangesloten bij NVM · Specialist in monumentaal en lunair vastgoed</div>
+    <div class="tb-r">
+      <a href="#">Gratis waardebepaling</a>
+      <a href="#">076 522 84 10</a>
+      <span class="langsw"><a href="#" id="lang-nl" class="on">NL</a> / <a href="#" id="lang-en">EN</a></span>
+    </div>
+  </div>
+</div>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#">
+      <span class="mark">VN</span>
+      <span><b>Van Namaken</b><i>Makelaar · sinds 2077</i></span>
+    </a>
+    <nav>
+      <ul class="menu">
+        <li><a class="on" href="#">Aanbod</a></li>
+        <li><a href="#">Maanlandgoederen</a></li>
+        <li><a href="#">Verkopen</a></li>
+        <li><a href="#">Taxaties</a></li>
+        <li><a href="#">Over ons</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
+    <button class="nav-cta">Bezichtiging plannen</button>
+    <button class="burger" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <div class="crumbs">
+    <a href="#">Home</a><span>/</span><a href="#">Aanbod</a><span>/</span><a href="#">Maan</a><span>/</span><a href="#">Weldervoort</a><span>/</span>Huize Maenstein
+  </div>
+
+  <div id="pane-photos">
+  <!-- GALERIJ -->
+  <div class="gallery">
+    <figure class="g-main" data-i="0">
+      <span class="g-badge">Nieuw in verkoop</span>
+      <img src="assets/huize-maenstein-gezien-vanaf-de-brug.jpg" alt="Huize Maenstein gezien vanaf de brug">
+    </figure>
+    <div class="g-side">
+      <figure data-i="2"><img src="assets/zuidzijde-met-gracht-en-brug.jpg" alt="Zuidzijde met gracht en brug"></figure>
+      <figure data-i="4"><img src="assets/entreehal-met-lambrisering.jpg" alt="Entreehal met lambrisering"></figure>
+    </div>
+  </div>
+
+  <div class="thumbs" id="thumbs"></div>
+  </div>
+
+  <div id="pane-d3" hidden>
+    <div class="viewer">
+      <iframe src="https://superspl.at/s?id=6270cc96" title="3D-model Huize Maenstein" allow="fullscreen; xr-spatial-tracking" allowfullscreen loading="lazy"></iframe>
+    </div>
+    <p class="viewer-note">Interactief 3D-model. Sleep om te draaien, scroll om in te zoomen.
+      <a href="https://superspl.at/s?id=6270cc96" target="_blank" rel="noopener">Openen in een nieuw tabblad</a>
+    </p>
+  </div>
+
+  <div class="mediabar" role="tablist">
+    <button role="tab" aria-selected="true" data-pane="photos">Foto’s (10)</button>
+    <button role="tab" aria-selected="false" data-pane="d3">3D-model <span class="tag">Nieuw</span></button>
+    <button role="tab" aria-selected="false" data-pane="photos">Plattegronden (4)</button>
+    <button role="tab" aria-selected="false" data-pane="photos">Video</button>
+    <button role="tab" aria-selected="false" data-pane="photos">Kaart</button>
+  </div>
+
+  <!-- TITEL -->
+  <div class="head">
+    <div>
+      <span class="pill">Beschikbaar</span><span class="pill">Maanmonument</span>
+      <h1>Huize Maenstein</h1>
+      <div class="place">Maensteinlaan 3, 4839 TR Weldervoort · Sector 7, Mare Tranquillitatis</div>
+    </div>
+    <div class="price">
+      § 4.750.000
+      <small>Lunaire kredieten, kosten koper</small>
+    </div>
+  </div>
+
+  <dl class="strip">
+    <div><dt>Woonoppervlakte</dt><dd>782 m²</dd></div>
+    <div><dt>Kavel regoliet</dt><dd>4,3 ha</dd></div>
+    <div><dt>Drukvolume</dt><dd>3.150 m³</dd></div>
+    <div><dt>Kamers</dt><dd>16 (7 slaap)</dd></div>
+    <div><dt>Bouwjaar</dt><dd>2211</dd></div>
+    <div><dt>Zwaartekracht</dt><dd>1,0 g kunstmatig</dd></div>
+  </dl>
+
+  <div class="main">
+    <div>
+
+      <section class="block">
+        <h2>Omschrijving</h2>
+        <div class="body-copy fade" id="desc">
+          <p>Aan het einde van een dubbele rij maanolmen onder glas, achter een smeedijzeren toegangssluis en volledig omgeven door een gekoelde watergracht, ligt Huize Maenstein. Een zeventiende-eeuws Nederlands landhuis, steen voor steen naar de Maan verscheept en in 2211 herbouwd onder de koepel van Sector 7, op twintig minuten van de nederzetting Weldervoort in Mare Tranquillitatis.</p>
+
+          <p>Het huis staat in een eigen drukkoepel van 4,3 hectare, met een volledig geregelde atmosfeer, kunstmatige zwaartekracht van 1,0 g en een dag-nachtcyclus die de zomer van Weldervoort volgt. De gracht is echt water, gewonnen uit de poolijsvelden, en wordt door de koepelinstallatie op temperatuur gehouden.</p>
+
+          <h4>Begane grond</h4>
+          <p>De eikenhouten voordeur, nog het origineel uit 1611, komt uit op de grote hal over de volledige diepte van het huis, met brede grenen delen, hoge paneeldeuren en zicht op de oprijlaan aan de achterzijde. Aan weerszijden bevinden zich de eetkamer met schouw en tegelkast, de bibliotheek, de salon met openslaande deuren naar de gracht en de landelijke keuken met inductiefornuis, koelcel en bijkeuken. Verder een gastentoilet met betimmering, een kelder met waterreserve en de dienstentree naar de noordelijke luchtsluis.</p>
+
+          <h4>Eerste verdieping</h4>
+          <p>Ruime overloop met vier slaapkamers, waaronder de hoofdslaapkamer met hemelbed, marmeren schouw en aangrenzende kleedkamer. Twee volledige badkamers, beide voorzien van vrijstaand bad, dubbele wastafel en toilet, aangesloten op het gesloten watercircuit. De vertrekken kijken uit over de gracht, de parterretuin of de koepelrand.</p>
+
+          <h4>Tweede verdieping en toren</h4>
+          <p>Drie logeerkamers met dakkapellen, een derde badkamer en een grote zolderberging met de historische kapconstructie in het zicht. Vanuit de tweede verdieping is de achtkantige traptoren bereikbaar. Door het kroonglas op de bovenste omloop kijkt u over de koepel heen, met vrij zicht op de Aarde en bij heldere stand op de rand van de Weldervoortkrater.</p>
+
+          <h4>Buiten</h4>
+          <p>Het huis staat op een omgracht eiland, bereikbaar via twee gemetselde bruggen met smeedijzeren leuning. Voor het huis ligt een parterretuin met buxushagen op geconditioneerde aarde en grindpaden van gezeefd regoliet, daarachter een weide met maangras en een parkbos van tweede generatie beuken. Op het voorterrein staat het koetshuis met dubbele rovergarage, werkplaats, laadstation en een vergunde bovenwoning van circa 90 m².</p>
+
+          <h4>Bijzonderheden</h4>
+          <ul>
+            <li>Maanmonument, geregistreerd onder Lunair Erfgoed nummer LM-40.512</li>
+            <li>Woonoppervlakte hoofdhuis ca. 782 m², koetshuis ca. 210 m², conform NEN2580-meetrapport</li>
+            <li>Kavel 4,3 ha eigen regoliet binnen eigen drukkoepel, geen pachtconstructie</li>
+            <li>Volledige demontage, transport en herbouw tussen 2206 en 2211</li>
+            <li>Kunstmatige zwaartekracht 1,0 g, met terugvalvoorziening op 0,4 g</li>
+            <li>Dubbele luchtsluis aan de noordzijde, derde sluis bij het koetshuis</li>
+            <li>Atmosfeerinstallatie met 96 uur autonome buffer</li>
+            <li>Regoliet-afscherming van 3 meter over de gehele koepel tegen straling</li>
+            <li>Eigen waterrecycling, sluitingsgraad 99,4 procent</li>
+            <li>Koetshuis met vergunde tweede woonruimte, nu in gebruik als gastenverblijf</li>
+            <li>Onderhoudscontract koepel en installaties loopt tot en met 2029</li>
+            <li>Oplevering in overleg, ouderdomsclausule van toepassing</li>
+          </ul>
+
+          <h4>Omgeving</h4>
+          <p>De koepel grenst aan het aangelegde Maelbos van Sector 7 en ligt op rijafstand van Weldervoort, met winkels, restaurants en internationale scholen. Het maglev-station naar Base Nieuwhaven en Base Zuiderpoort ligt op ongeveer twaalf minuten, de shuttlehaven met dagelijkse verbinding naar de Aarde op vijfentwintig minuten.</p>
+
+          <h4>Algemeen</h4>
+          <p>Deze informatie is met zorg samengesteld. Er kunnen geen rechten aan worden ontleend. Er is pas een overeenkomst wanneer de koopakte door beide partijen is ondertekend. Bezichtiging uitsluitend op afspraak, na verificatie van financiering en geldig drukpak-certificaat.</p>
+        </div>
+        <button class="more-btn" data-more="desc">Lees de volledige omschrijving</button>
+      </section>
+
+      <section class="block">
+        <h2>Kenmerken</h2>
+        <div class="specs">
+          <details open>
+            <summary>Overdracht</summary>
+            <table>
+              <tr><th>Vraagprijs</th><td>§ 4.750.000 lunaire kredieten, kosten koper</td></tr>
+              <tr><th>Status</th><td>Beschikbaar</td></tr>
+              <tr><th>Aanvaarding</th><td>In overleg, na sluiscontrole</td></tr>
+              <tr><th>Aangeboden sinds</th><td>19 dagen</td></tr>
+              <tr><th>Laatst bijgewerkt</th><td>12 augustus 2026</td></tr>
+              <tr><th>Bijdrage koepelvereniging</th><td>§ 1.240 per maand</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Bouw</summary>
+            <table>
+              <tr><th>Soort woning</th><td>Landhuis, vrijstaand, omgracht, in eigen koepel</td></tr>
+              <tr><th>Soort bouw</th><td>Herbouw van aardse originele bouwdelen</td></tr>
+              <tr><th>Bouwjaar</th><td>1611 op Aarde, herbouwd op de Maan in 2211</td></tr>
+              <tr><th>Monument</th><td>Maanmonument, nummer LM-40.512</td></tr>
+              <tr><th>Dak</th><td>Schilddak, natuurleien, meegekomen van de oude locatie</td></tr>
+              <tr><th>Koepel</th><td>Gelaagd aluminiumoxideglas, 3 m regolietschild</td></tr>
+              <tr><th>Onderhoud binnen</th><td>Uitstekend</td></tr>
+              <tr><th>Onderhoud buiten</th><td>Uitstekend</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Oppervlakten en volume</summary>
+            <table>
+              <tr><th>Wonen hoofdhuis</th><td>782 m²</td></tr>
+              <tr><th>Koetshuis</th><td>210 m²</td></tr>
+              <tr><th>Overige inpandige ruimte</th><td>96 m²</td></tr>
+              <tr><th>Luchtsluizen</th><td>34 m², drie stuks</td></tr>
+              <tr><th>Externe bergruimte</th><td>58 m²</td></tr>
+              <tr><th>Kavel binnen koepel</th><td>43.100 m²</td></tr>
+              <tr><th>Drukvolume woning</th><td>3.150 m³</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Indeling</summary>
+            <table>
+              <tr><th>Aantal kamers</th><td>16 kamers, waarvan 7 slaapkamers</td></tr>
+              <tr><th>Aantal badkamers</th><td>3 badkamers en 2 aparte toiletten</td></tr>
+              <tr><th>Voorzieningen badkamers</th><td>Vrijstaand bad, inloopdouche, dubbele wastafel</td></tr>
+              <tr><th>Aantal woonlagen</th><td>3 woonlagen, kelder en toren</td></tr>
+              <tr><th>Voorzieningen</th><td>Open haard op gasretour (4), noodschuilkelder, alarminstallatie, laserlink</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Klimaat en energie</summary>
+            <table>
+              <tr><th>Energielabel</th><td>Niet van toepassing, lunair regime</td></tr>
+              <tr><th>Zwaartekracht</th><td>1,0 g kunstmatig, terugval op 0,4 g</td></tr>
+              <tr><th>Atmosfeer</th><td>Aardse mix, 101 kPa, buffer 96 uur</td></tr>
+              <tr><th>Verwarming</th><td>Vloerverwarming op koepelrestwarmte</td></tr>
+              <tr><th>Warm water</th><td>Gesloten circuit met boiler 300 liter</td></tr>
+              <tr><th>Energie</th><td>Zonneveld 68 panelen op de koepelrand, accubank 400 kWh</td></tr>
+              <tr><th>Stralingsafscherming</th><td>3 m regoliet, gemeten restdosis 0,4 mSv per jaar</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Buitenruimte</summary>
+            <table>
+              <tr><th>Ligging</th><td>Aan de rand van Sector 7, vrij uitzicht op de kraterwand</td></tr>
+              <tr><th>Tuin</th><td>Parterretuin, weide en parkbos, rondom, onder koepel</td></tr>
+              <tr><th>Gracht</th><td>Ja, rondom, gekoeld, met twee gemetselde bruggen</td></tr>
+              <tr><th>Aardezicht</th><td>Ja, vanaf de toren en de zuidgevel</td></tr>
+              <tr><th>Berging</th><td>Koetshuis, tuinberging en oranjerie</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Vervoer en bereikbaarheid</summary>
+            <table>
+              <tr><th>Parkeren</th><td>Dubbele rovergarage in koetshuis, standplaats voor 10 voertuigen</td></tr>
+              <tr><th>Laadpunt</th><td>Ja, twee laadpunten 11 kW</td></tr>
+              <tr><th>Oprijlaan</th><td>Eigen laan, ca. 220 meter, tot aan de hoofdsluis</td></tr>
+              <tr><th>Maglev</th><td>Station Sector 7 op 12 minuten</td></tr>
+              <tr><th>Shuttlehaven</th><td>Haven Zuiderpoort op 25 minuten, dagelijkse vlucht naar de Aarde</td></tr>
+            </table>
+          </details>
+          <details>
+            <summary>Kadaster en publiekrechtelijk</summary>
+            <table>
+              <tr><th>Lunaire aanduiding</th><td>Weldervoort, sectie K, kavel 1842</td></tr>
+              <tr><th>Oppervlakte</th><td>43.100 m²</td></tr>
+              <tr><th>Eigendomssituatie</th><td>Volle eigendom onder Lunair Kavelverdrag</td></tr>
+              <tr><th>Bestemming</th><td>Wonen met waarde cultuurhistorie</td></tr>
+              <tr><th>Bijzondere regeling</th><td>Gerangschikt onder Regeling Maanlandgoederen</td></tr>
+            </table>
+          </details>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Foto’s</h2>
+        <div class="photogrid" id="grid"></div>
+      </section>
+
+      <section class="block">
+        <h2>Plattegronden</h2>
+        <div class="gallery" style="height:260px">
+          <div class="ph"><span>Plattegrond begane grond</span></div>
+          <div class="g-side" style="grid-template-rows:1fr 1fr">
+            <div class="ph"><span>1e verdieping</span></div>
+            <div class="ph"><span>2e verdieping en toren</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Ligging</h2>
+        <div class="ph map"><span>Kaart · Maensteinlaan 3, Weldervoort</span></div>
+      </section>
+
+      <section class="block" style="padding-bottom:0">
+        <h2>Documenten</h2>
+        <div class="docs">
+          <a class="doc" href="#"><span><b>Brochure Huize Maenstein</b><br><small>PDF · 12,4 MB</small></span><span>Downloaden</span></a>
+          <a class="doc" href="#"><span><b>NEN2580-meetrapport en drukcertificaat</b><br><small>PDF · 1,1 MB</small></span><span>Downloaden</span></a>
+          <a class="doc" href="#"><span><b>Koepelcertificaat en onderhoudsplan</b><br><small>PDF · 6,8 MB</small></span><span>Downloaden</span></a>
+          <a class="doc" href="#"><span><b>Kavelkaart en eigendomsbewijs</b><br><small>PDF · 0,9 MB</small></span><span>Downloaden</span></a>
+          <a class="doc" href="#"><span><b>Lijst van zaken</b><br><small>PDF · 0,4 MB</small></span><span>Downloaden</span></a>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="side">
+
+      <div class="card" id="side-3d">
+        <div class="side-viewer">
+          <iframe src="https://superspl.at/s?id=6270cc96" title="3D-model Huize Maenstein" allow="fullscreen; xr-spatial-tracking" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <div class="card-in side-viewer-in">
+          <p class="sv-by">By Orbit Studio</p>
+          <p class="eyebrow sv-head">Bekijk in 3D <span class="tag">Nieuw</span></p>
+          <p class="sv-note">Loop virtueel om het huis heen, zonder drukpak.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-in">
+          <p class="eyebrow">Uw makelaar</p>
+          <div class="agent">
+            <div class="av">TP</div>
+            <div>
+              <b>Tom Puss</b>
+              <small>Register-makelaar, lunair vastgoed</small>
+            </div>
+          </div>
+          <a class="btn btn-primary" href="#">Bezichtiging aanvragen</a>
+          <a class="btn btn-ghost" href="#">Terugbelverzoek</a>
+          <div class="contact-lines">
+            <a href="#">076 522 84 10</a>
+            <a href="#">t.puss@vannamaken.nl</a>
+            <a href="#">Bekijk beschikbare tijden</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-in">
+          <p class="eyebrow">Eerstvolgende bezichtigingen</p>
+          <div class="viewings">
+            <div><b>Woensdag 19 aug</b><span>10:00 · 2 plekken</span></div>
+            <div><b>Zaterdag 22 aug</b><span>13:30 · vol</span></div>
+            <div><b>Dinsdag 25 aug</b><span>15:00 · 4 plekken</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-in">
+          <p class="eyebrow">Vraag stellen</p>
+          <div class="form">
+            <div class="row">
+              <div><label for="f1">Naam</label><input id="f1" placeholder="Uw naam"></div>
+              <div><label for="f2">Telefoon</label><input id="f2" placeholder="06 00 00 00 00"></div>
+            </div>
+            <div><label for="f3">E-mail</label><input id="f3" type="email" placeholder="naam@voorbeeld.nl"></div>
+            <div><label for="f4">Bericht</label><textarea id="f4" placeholder="Ik ontvang graag de uitgebreide brochure van Huize Maenstein."></textarea></div>
+            <a class="btn btn-primary" href="#">Versturen</a>
+            <p class="fine">Wij nemen doorgaans binnen één werkdag contact op. Uw gegevens worden alleen gebruikt om uw vraag te beantwoorden.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-in">
+          <p class="eyebrow">Deze woning</p>
+          <div class="share">
+            <button>Bewaren</button>
+            <button>Delen</button>
+            <button>Printen</button>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+</div>
+
+<section class="similar">
+  <div class="wrap">
+    <h2>Vergelijkbaar aanbod</h2>
+    <p class="sub">Landgoederen en monumentale woningen in Mare Tranquillitatis</p>
+    <div class="cards">
+
+      <a class="pcard" href="#">
+        <div class="pc-media"><img src="assets/zuidzijde-met-gracht-en-brug.jpg" alt="Omgracht landhuis"></div>
+        <div class="pc-in">
+          <div class="st">Beschikbaar</div>
+          <h3>Huize Zaeghvliet</h3>
+          <div class="loc">Sector 4 · Vlietdreef 4</div>
+          <div class="meta"><span>540 m² · 11 kamers</span><b>§ 2.950.000</b></div>
+        </div>
+      </a>
+
+      <a class="pcard" href="#">
+        <div class="pc-media"><img src="assets/toegangshek-met-oprijlaan.jpg" alt="Toegangshek met oprijlaan"></div>
+        <div class="pc-in">
+          <div class="st">Onder bod</div>
+          <h3>Landgoed Elsterwoude</h3>
+          <div class="loc">Sector 9 · Elsterlaan 88</div>
+          <div class="meta"><span>410 m² · 2,1 ha koepel</span><b>§ 2.150.000</b></div>
+        </div>
+      </a>
+
+      <a class="pcard" href="#">
+        <div class="pc-media"><img src="assets/entreehal-met-lambrisering.jpg" alt="Entreehal van landhuis"></div>
+        <div class="pc-in">
+          <div class="st">Nieuw</div>
+          <h3>Huize Maerhorst</h3>
+          <div class="loc">Sector 2 · Maerhorstdreef 3</div>
+          <div class="meta"><span>625 m² · 3,4 ha koepel</span><b>§ 3.400.000</b></div>
+        </div>
+      </a>
+
+    </div>
+    <div class="center"><a class="link-lg" href="#">Bekijk het volledige aanbod</a></div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="cols">
+      <div class="brand">
+        <b>Van Namaken Makelaar</b>
+        Koepellaan 214<br>4839 AB Weldervoort, Maan<br>
+        <a href="#">076 522 84 10</a><br>
+        <a href="#">info@vannamaken.nl</a>
+      </div>
+      <div>
+        <h4>Diensten</h4>
+        <ul>
+          <li><a href="#">Woning verkopen</a></li>
+          <li><a href="#">Aankoopbegeleiding</a></li>
+          <li><a href="#">Taxatie</a></li>
+          <li><a href="#">Koepeladvies</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Aanbod</h4>
+        <ul>
+          <li><a href="#">Koopwoningen</a></li>
+          <li><a href="#">Maanlandgoederen</a></li>
+          <li><a href="#">Nieuwbouw</a></li>
+          <li><a href="#">Verkocht</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Over ons</h4>
+        <ul>
+          <li><a href="#">Het team</a></li>
+          <li><a href="#">Werkwijze</a></li>
+          <li><a href="#">Vacatures</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="bottom">
+      <span>© 2026 Van Namaken Makelaar · KvK 20031845 · Aangesloten bij NVM</span>
+      <span><a href="#">Privacy</a> · <a href="#">Cookies</a> · <a href="#">Algemene voorwaarden</a></span>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+var PHOTOS = [
+  {src:"assets/huize-maenstein-gezien-vanaf-de-brug.jpg",  cap:"Voorgevel gezien vanaf de brug"},
+  {src:"assets/toegangshek-met-oprijlaan.jpg",   cap:"Toegangshek en oprijlaan"},
+  {src:"assets/zuidzijde-met-gracht-en-brug.jpg",   cap:"Zuidzijde met gracht en brug"},
+  {src:"assets/entreehal-met-lambrisering.jpg",   cap:"Entreehal"},
+  {src:"assets/eetkamer.jpg", cap:"Eetkamer"},
+  {src:"assets/keuken.jpg",cap:"Keuken"},
+  {src:"assets/hoofdslaapkamer.jpg",cap:"Hoofdslaapkamer"},
+  {src:"assets/overloop-eerste-verdieping.jpg",   cap:"Overloop eerste verdieping"},
+  {src:"assets/uitzicht-op-de-brug.jpg", cap:"Uitzicht op de brug"},
+  {src:"assets/gastentoilet.jpg", cap:"Gastentoilet"}
+];
+
+// thumbnailstrip
+var tw = document.getElementById('thumbs');
+PHOTOS.slice(0,9).forEach(function(p,i){
+  var d = document.createElement('div');
+  d.className = 'thumb' + (i===0 ? ' sel' : '');
+  d.innerHTML = '<img src="'+p.src+'" alt="'+p.cap+'">';
+  d.addEventListener('click', function(){ setMain(i); });
+  tw.appendChild(d);
+});
+
+// fotoraster
+var gw = document.getElementById('grid');
+PHOTOS.forEach(function(p,i){
+  var f = document.createElement('figure');
+  f.innerHTML = '<img src="'+p.src+'" alt="'+p.cap+'"><figcaption>'+p.cap+'</figcaption>';
+  f.addEventListener('click', function(){ open(i); });
+  gw.appendChild(f);
+});
+
+var mainFig = document.querySelector('.g-main img');
+var current = 0;
+function setMain(i){
+  current = i;
+  mainFig.src = PHOTOS[i].src;
+  mainFig.alt = PHOTOS[i].cap;
+  Array.prototype.forEach.call(tw.children, function(c,n){ c.className = 'thumb' + (n===i?' sel':''); });
+}
+
+// lees meer
+document.querySelectorAll('[data-more]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var el = document.getElementById(btn.dataset.more);
+    var op = el.classList.toggle('open');
+    btn.textContent = op ? 'Toon minder' : 'Lees de volledige omschrijving';
+  });
+});
+
+// mediatabs
+document.querySelectorAll('.mediabar button').forEach(function(tab, i, all){
+  tab.addEventListener('click', function(){
+    all.forEach(function(t){ t.setAttribute('aria-selected','false'); });
+    tab.setAttribute('aria-selected','true');
+    var d3 = tab.dataset.pane === 'd3';
+    document.getElementById('pane-photos').hidden = d3;
+    document.getElementById('pane-d3').hidden = !d3;
+  });
+});
+<\/script>
+
+<script>
+var I18N = {
+"* Deze pagina is een voorbeeld. Alle gegevens, teksten en beelden zijn met AI gemaakt om een woningpresentatie na te bootsen en te laten zien waar de 3D-modelviewer geplaatst kan worden. Er is geen echte woning en er wordt niets te koop aangeboden. *": "* This page is a mock-up. All data, text and imagery were generated with AI to imitate a property listing and to show where the 3D model viewer can sit. There is no real property and nothing is for sale. *",
+"Aangesloten bij NVM · Specialist in monumentaal en lunair vastgoed": "NVM member · Specialists in heritage and lunar property",
+"Gratis waardebepaling": "Free valuation",
+"Van Namaken": "Van Namaken",
+"Makelaar · sinds 2077": "Estate agents · since 2077",
+"Aanbod": "Properties",
+"Maanlandgoederen": "Lunar estates",
+"Verkopen": "Selling",
+"Taxaties": "Valuations",
+"Over ons": "About us",
+"Contact": "Contact",
+"Bezichtiging plannen": "Book a viewing",
+"Home": "Home",
+"Maan": "Moon",
+"Nieuw in verkoop": "New listing",
+"Interactief 3D-model. Sleep om te draaien, scroll om in te zoomen.": "Interactive 3D model. Drag to orbit, scroll to zoom.",
+"Openen in een nieuw tabblad": "Open in a new tab",
+"Foto’s (10)": "Photos (10)",
+"3D-model": "3D model",
+"Nieuw": "New",
+"Plattegronden (4)": "Floorplans (4)",
+"Video": "Video",
+"Kaart": "Map",
+"Beschikbaar": "Available",
+"Maanmonument": "Lunar heritage",
+"Maensteinlaan 3, 4839 TR Weldervoort · Sector 7, Mare Tranquillitatis": "Maensteinlaan 3, 4839 TR Weldervoort · Sector 7, Mare Tranquillitatis",
+"Lunaire kredieten, kosten koper": "Lunar credits, buyer's costs",
+"Woonoppervlakte": "Living area",
+"Kavel regoliet": "Regolith plot",
+"Drukvolume": "Pressurised volume",
+"Kamers": "Rooms",
+"16 (7 slaap)": "16 (7 bed)",
+"Bouwjaar": "Year built",
+"Zwaartekracht": "Gravity",
+"1,0 g kunstmatig": "1.0 g artificial",
+"Omschrijving": "Description",
+"Aan het einde van een dubbele rij maanolmen onder glas, achter een smeedijzeren toegangssluis en volledig omgeven door een gekoelde watergracht, ligt Huize Maenstein. Een zeventiende-eeuws Nederlands landhuis, steen voor steen naar de Maan verscheept en in 2211 herbouwd onder de koepel van Sector 7, op twintig minuten van de nederzetting Weldervoort in Mare Tranquillitatis.": "At the end of a double row of moon elms under glass, behind a wrought iron entrance lock and fully surrounded by a chilled water moat, stands Huize Maenstein. A seventeenth-century Dutch country house, shipped to the Moon stone by stone and rebuilt in 2211 under the dome of Sector 7, twenty minutes from the settlement of Weldervoort in Mare Tranquillitatis.",
+"Het huis staat in een eigen drukkoepel van 4,3 hectare, met een volledig geregelde atmosfeer, kunstmatige zwaartekracht van 1,0 g en een dag-nachtcyclus die de zomer van Weldervoort volgt. De gracht is echt water, gewonnen uit de poolijsvelden, en wordt door de koepelinstallatie op temperatuur gehouden.": "The house sits inside its own 4.3 hectare pressure dome, with a fully regulated atmosphere, artificial gravity of 1.0 g and a day-night cycle that follows a Weldervoort summer. The moat is real water, drawn from the polar ice fields and held at temperature by the dome plant.",
+"Begane grond": "Ground floor",
+"De eikenhouten voordeur, nog het origineel uit 1611, komt uit op de grote hal over de volledige diepte van het huis, met brede grenen delen, hoge paneeldeuren en zicht op de oprijlaan aan de achterzijde. Aan weerszijden bevinden zich de eetkamer met schouw en tegelkast, de bibliotheek, de salon met openslaande deuren naar de gracht en de landelijke keuken met inductiefornuis, koelcel en bijkeuken. Verder een gastentoilet met betimmering, een kelder met waterreserve en de dienstentree naar de noordelijke luchtsluis.": "The oak front door, still the 1611 original, opens onto the great hall running the full depth of the house, with wide pine boards, tall panelled doors and a view down the drive at the rear. To either side are the dining room with its chimneypiece and tiled cupboard, the library, the drawing room with doors onto the moat, and the country kitchen with induction range, cold store and scullery. There is also a panelled cloakroom, a cellar holding the water reserve, and the service entrance to the northern airlock.",
+"Eerste verdieping": "First floor",
+"Ruime overloop met vier slaapkamers, waaronder de hoofdslaapkamer met hemelbed, marmeren schouw en aangrenzende kleedkamer. Twee volledige badkamers, beide voorzien van vrijstaand bad, dubbele wastafel en toilet, aangesloten op het gesloten watercircuit. De vertrekken kijken uit over de gracht, de parterretuin of de koepelrand.": "A generous landing with four bedrooms, including the principal bedroom with four-poster bed, marble chimneypiece and adjoining dressing room. Two full bathrooms, each with a freestanding bath, double basin and lavatory, connected to the closed water circuit. The rooms look out over the moat, the parterre garden or the dome rim.",
+"Tweede verdieping en toren": "Second floor and tower",
+"Drie logeerkamers met dakkapellen, een derde badkamer en een grote zolderberging met de historische kapconstructie in het zicht. Vanuit de tweede verdieping is de achtkantige traptoren bereikbaar. Door het kroonglas op de bovenste omloop kijkt u over de koepel heen, met vrij zicht op de Aarde en bij heldere stand op de rand van de Weldervoortkrater.": "Three guest rooms with dormer windows, a third bathroom and a large attic store with the historic roof structure on show. The octagonal stair tower is reached from the second floor. Through the crown glass of the upper gallery you look out beyond the dome, with a clear view of Earth and, in the right light, the rim of the Weldervoort crater.",
+"Buiten": "Outside",
+"Het huis staat op een omgracht eiland, bereikbaar via twee gemetselde bruggen met smeedijzeren leuning. Voor het huis ligt een parterretuin met buxushagen op geconditioneerde aarde en grindpaden van gezeefd regoliet, daarachter een weide met maangras en een parkbos van tweede generatie beuken. Op het voorterrein staat het koetshuis met dubbele rovergarage, werkplaats, laadstation en een vergunde bovenwoning van circa 90 m².": "The house stands on a moated island, reached by two brick bridges with wrought iron railings. In front lies a parterre garden with box hedging on conditioned soil and gravel paths of sieved regolith, beyond it a meadow of moon grass and a park wood of second generation beeches. The forecourt holds the coach house with double rover garage, workshop, charging station and a consented upper apartment of approximately 90 m².",
+"Bijzonderheden": "Key points",
+"Maanmonument, geregistreerd onder Lunair Erfgoed nummer LM-40.512": "Lunar heritage listing, Lunar Heritage number LM-40.512",
+"Woonoppervlakte hoofdhuis ca. 782 m², koetshuis ca. 210 m², conform NEN2580-meetrapport": "Living area of main house approx. 782 m², coach house approx. 210 m², per NEN2580 survey",
+"Kavel 4,3 ha eigen regoliet binnen eigen drukkoepel, geen pachtconstructie": "Plot of 4.3 ha freehold regolith inside its own pressure dome, no lease construction",
+"Volledige demontage, transport en herbouw tussen 2206 en 2211": "Full dismantling, transport and rebuild between 2206 and 2211",
+"Kunstmatige zwaartekracht 1,0 g, met terugvalvoorziening op 0,4 g": "Artificial gravity at 1.0 g, with fallback to 0.4 g",
+"Dubbele luchtsluis aan de noordzijde, derde sluis bij het koetshuis": "Double airlock on the north side, third lock at the coach house",
+"Atmosfeerinstallatie met 96 uur autonome buffer": "Atmosphere plant with a 96 hour independent buffer",
+"Regoliet-afscherming van 3 meter over de gehele koepel tegen straling": "Three metres of regolith shielding across the whole dome against radiation",
+"Eigen waterrecycling, sluitingsgraad 99,4 procent": "Own water recycling, 99.4 percent closure rate",
+"Koetshuis met vergunde tweede woonruimte, nu in gebruik als gastenverblijf": "Coach house with consented second dwelling, currently used as guest accommodation",
+"Onderhoudscontract koepel en installaties loopt tot en met 2029": "Maintenance contract for dome and plant runs through 2029",
+"Oplevering in overleg, ouderdomsclausule van toepassing": "Completion by agreement, age clause applies",
+"Omgeving": "Surroundings",
+"De koepel grenst aan het aangelegde Maelbos van Sector 7 en ligt op rijafstand van Weldervoort, met winkels, restaurants en internationale scholen. Het maglev-station naar Base Nieuwhaven en Base Zuiderpoort ligt op ongeveer twaalf minuten, de shuttlehaven met dagelijkse verbinding naar de Aarde op vijfentwintig minuten.": "The dome adjoins the planted Maelbos of Sector 7 and lies a short drive from Weldervoort, with shops, restaurants and international schools. The maglev station serving Base Nieuwhaven and Base Zuiderpoort is about twelve minutes away, the shuttle port with its daily Earth connection twenty-five minutes.",
+"Algemeen": "General",
+"Deze informatie is met zorg samengesteld. Er kunnen geen rechten aan worden ontleend. Er is pas een overeenkomst wanneer de koopakte door beide partijen is ondertekend. Bezichtiging uitsluitend op afspraak, na verificatie van financiering en geldig drukpak-certificaat.": "This information has been compiled with care. No rights may be derived from it. An agreement exists only once the deed of sale has been signed by both parties. Viewings by appointment only, subject to proof of funding and a valid pressure suit certificate.",
+"Lees de volledige omschrijving": "Read the full description",
+"Toon minder": "Show less",
+"Kenmerken": "Features",
+"Overdracht": "Transfer",
+"Vraagprijs": "Asking price",
+"§ 4.750.000 lunaire kredieten, kosten koper": "§ 4,750,000 lunar credits, buyer's costs",
+"Status": "Status",
+"Aanvaarding": "Availability",
+"In overleg, na sluiscontrole": "By agreement, after lock inspection",
+"Aangeboden sinds": "Listed for",
+"19 dagen": "19 days",
+"Laatst bijgewerkt": "Last updated",
+"12 augustus 2026": "12 August 2026",
+"Bijdrage koepelvereniging": "Dome association fee",
+"§ 1.240 per maand": "§ 1,240 per month",
+"Bouw": "Construction",
+"Soort woning": "Property type",
+"Landhuis, vrijstaand, omgracht, in eigen koepel": "Country house, detached, moated, in its own dome",
+"Soort bouw": "Build type",
+"Herbouw van aardse originele bouwdelen": "Rebuild using original Earth fabric",
+"1611 op Aarde, herbouwd op de Maan in 2211": "1611 on Earth, rebuilt on the Moon in 2211",
+"Monument": "Heritage status",
+"Maanmonument, nummer LM-40.512": "Lunar heritage listing, number LM-40.512",
+"Dak": "Roof",
+"Schilddak, natuurleien, meegekomen van de oude locatie": "Hipped roof, natural slate, brought from the original site",
+"Koepel": "Dome",
+"Gelaagd aluminiumoxideglas, 3 m regolietschild": "Laminated alumina glass, 3 m regolith shield",
+"Onderhoud binnen": "Interior condition",
+"Uitstekend": "Excellent",
+"Onderhoud buiten": "Exterior condition",
+"Oppervlakten en volume": "Areas and volume",
+"Wonen hoofdhuis": "Living area, main house",
+"Koetshuis": "Coach house",
+"Overige inpandige ruimte": "Other internal space",
+"Luchtsluizen": "Airlocks",
+"34 m², drie stuks": "34 m², three in total",
+"Externe bergruimte": "External storage",
+"Kavel binnen koepel": "Plot within dome",
+"Drukvolume woning": "Pressurised volume of house",
+"Indeling": "Layout",
+"Aantal kamers": "Number of rooms",
+"16 kamers, waarvan 7 slaapkamers": "16 rooms, of which 7 bedrooms",
+"Aantal badkamers": "Number of bathrooms",
+"3 badkamers en 2 aparte toiletten": "3 bathrooms and 2 separate lavatories",
+"Voorzieningen badkamers": "Bathroom fittings",
+"Vrijstaand bad, inloopdouche, dubbele wastafel": "Freestanding bath, walk-in shower, double basin",
+"Aantal woonlagen": "Number of floors",
+"3 woonlagen, kelder en toren": "3 floors, cellar and tower",
+"Voorzieningen": "Amenities",
+"Open haard op gasretour (4), noodschuilkelder, alarminstallatie, laserlink": "Four fireplaces on gas return, emergency shelter, alarm system, laser link",
+"Klimaat en energie": "Climate and energy",
+"Energielabel": "Energy label",
+"Niet van toepassing, lunair regime": "Not applicable under lunar regime",
+"1,0 g kunstmatig, terugval op 0,4 g": "1.0 g artificial, fallback to 0.4 g",
+"Atmosfeer": "Atmosphere",
+"Aardse mix, 101 kPa, buffer 96 uur": "Earth mix, 101 kPa, 96 hour buffer",
+"Verwarming": "Heating",
+"Vloerverwarming op koepelrestwarmte": "Underfloor heating on dome waste heat",
+"Warm water": "Hot water",
+"Gesloten circuit met boiler 300 liter": "Closed circuit with 300 litre cylinder",
+"Energie": "Power",
+"Zonneveld 68 panelen op de koepelrand, accubank 400 kWh": "Solar array of 68 panels on the dome rim, 400 kWh battery bank",
+"Stralingsafscherming": "Radiation shielding",
+"3 m regoliet, gemeten restdosis 0,4 mSv per jaar": "3 m regolith, measured residual dose 0.4 mSv per year",
+"Buitenruimte": "Outside space",
+"Ligging": "Location",
+"Aan de rand van Sector 7, vrij uitzicht op de kraterwand": "On the edge of Sector 7, open view of the crater wall",
+"Tuin": "Garden",
+"Parterretuin, weide en parkbos, rondom, onder koepel": "Parterre garden, meadow and park wood, all round, under dome",
+"Gracht": "Moat",
+"Ja, rondom, gekoeld, met twee gemetselde bruggen": "Yes, all round, chilled, with two brick bridges",
+"Aardezicht": "Earth view",
+"Ja, vanaf de toren en de zuidgevel": "Yes, from the tower and the south front",
+"Berging": "Storage",
+"Koetshuis, tuinberging en oranjerie": "Coach house, garden store and orangery",
+"Vervoer en bereikbaarheid": "Transport and access",
+"Parkeren": "Parking",
+"Dubbele rovergarage in koetshuis, standplaats voor 10 voertuigen": "Double rover garage in the coach house, standing for 10 vehicles",
+"Laadpunt": "Charging",
+"Ja, twee laadpunten 11 kW": "Yes, two 11 kW charge points",
+"Oprijlaan": "Drive",
+"Eigen laan, ca. 220 meter, tot aan de hoofdsluis": "Private drive, approx. 220 metres, up to the main lock",
+"Maglev": "Maglev",
+"Station Sector 7 op 12 minuten": "Sector 7 station, 12 minutes",
+"Shuttlehaven": "Shuttle port",
+"Haven Zuiderpoort op 25 minuten, dagelijkse vlucht naar de Aarde": "Zuiderpoort port, 25 minutes, daily flight to Earth",
+"Kadaster en publiekrechtelijk": "Registry and planning",
+"Lunaire aanduiding": "Lunar reference",
+"Weldervoort, sectie K, kavel 1842": "Weldervoort, section K, plot 1842",
+"Oppervlakte": "Area",
+"Eigendomssituatie": "Tenure",
+"Volle eigendom onder Lunair Kavelverdrag": "Freehold under the Lunar Plot Treaty",
+"Bestemming": "Planning use",
+"Wonen met waarde cultuurhistorie": "Residential with heritage value",
+"Bijzondere regeling": "Special scheme",
+"Gerangschikt onder Regeling Maanlandgoederen": "Registered under the Lunar Estates Scheme",
+"Foto’s": "Photos",
+"Plattegronden": "Floorplans",
+"Plattegrond begane grond": "Ground floor plan",
+"1e verdieping": "First floor",
+"2e verdieping en toren": "Second floor and tower",
+"Kaart · Maensteinlaan 3, Weldervoort": "Map · Maensteinlaan 3, Weldervoort",
+"Documenten": "Documents",
+"Brochure Huize Maenstein": "Huize Maenstein brochure",
+"Downloaden": "Download",
+"NEN2580-meetrapport en drukcertificaat": "NEN2580 survey and pressure certificate",
+"Koepelcertificaat en onderhoudsplan": "Dome certificate and maintenance plan",
+"Kavelkaart en eigendomsbewijs": "Plot map and title deed",
+"Lijst van zaken": "Fixtures and fittings list",
+"Bekijk in 3D": "View in 3D",
+"Loop virtueel om het huis heen, zonder drukpak.": "Walk around the house virtually, no pressure suit needed.",
+"Uw makelaar": "Your agent",
+"Register-makelaar, lunair vastgoed": "Chartered agent, lunar property",
+"Bezichtiging aanvragen": "Request a viewing",
+"Terugbelverzoek": "Request a call back",
+"Bekijk beschikbare tijden": "See available times",
+"Eerstvolgende bezichtigingen": "Next viewings",
+"Woensdag 19 aug": "Wednesday 19 Aug",
+"10:00 · 2 plekken": "10:00 · 2 places",
+"Zaterdag 22 aug": "Saturday 22 Aug",
+"13:30 · vol": "13:30 · full",
+"Dinsdag 25 aug": "Tuesday 25 Aug",
+"15:00 · 4 plekken": "15:00 · 4 places",
+"Vraag stellen": "Ask a question",
+"Naam": "Name",
+"Telefoon": "Phone",
+"E-mail": "Email",
+"Bericht": "Message",
+"Versturen": "Send",
+"Wij nemen doorgaans binnen één werkdag contact op. Uw gegevens worden alleen gebruikt om uw vraag te beantwoorden.": "We normally reply within one working day. Your details are used only to answer your question.",
+"Deze woning": "This property",
+"Bewaren": "Save",
+"Delen": "Share",
+"Printen": "Print",
+"Vergelijkbaar aanbod": "Similar properties",
+"Landgoederen en monumentale woningen in Mare Tranquillitatis": "Estates and heritage houses in Mare Tranquillitatis",
+"Sector 4 · Vlietdreef 4": "Sector 4 · Vlietdreef 4",
+"540 m² · 11 kamers": "540 m² · 11 rooms",
+"Onder bod": "Under offer",
+"410 m² · 2,1 ha koepel": "410 m² · 2.1 ha dome",
+"625 m² · 3,4 ha koepel": "625 m² · 3.4 ha dome",
+"Bekijk het volledige aanbod": "See all properties",
+"Van Namaken Makelaar": "Van Namaken Estate Agents",
+"4839 AB Weldervoort, Maan": "4839 AB Weldervoort, Moon",
+"Diensten": "Services",
+"Woning verkopen": "Sell a property",
+"Aankoopbegeleiding": "Buying advice",
+"Taxatie": "Valuation",
+"Koepeladvies": "Dome advice",
+"Koopwoningen": "For sale",
+"Nieuwbouw": "New build",
+"Verkocht": "Sold",
+"Het team": "The team",
+"Werkwijze": "How we work",
+"Vacatures": "Careers",
+"© 2026 Van Namaken Makelaar · KvK 20031845 · Aangesloten bij NVM": "© 2026 Van Namaken Estate Agents · CoC 20031845 · NVM member",
+"Privacy": "Privacy",
+"Cookies": "Cookies",
+"Algemene voorwaarden": "Terms and conditions",
+"Voorgevel gezien vanaf de brug": "Front elevation seen from the bridge",
+"Toegangshek en oprijlaan": "Entrance gate and drive",
+"Zuidzijde met gracht en brug": "South side with moat and bridge",
+"Entreehal": "Entrance hall",
+"Eetkamer": "Dining room",
+"Keuken": "Kitchen",
+"Hoofdslaapkamer": "Principal bedroom",
+"Overloop eerste verdieping": "First floor landing",
+"Uitzicht op de brug": "View onto the bridge",
+"Gastentoilet": "Cloakroom",
+"Uw naam": "Your name",
+"naam@voorbeeld.nl": "name@example.com",
+"Ik ontvang graag de uitgebreide brochure van Huize Maenstein.": "I would like to receive the full brochure for Huize Maenstein."
+};
+
+(function(){
+  var nodes = [];
+  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+  var n;
+  while ((n = walker.nextNode())) {
+    var p = n.parentNode.nodeName;
+    if (p === 'SCRIPT' || p === 'STYLE') continue;
+    if (!n.data.trim()) continue;
+    nodes.push({ node: n, nl: n.data });
+  }
+  var fields = [];
+  document.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(function(f){
+    fields.push({ el: f, nl: f.placeholder });
+  });
+
+  function apply(lang){
+    nodes.forEach(function(o){
+      if (lang === 'nl') { o.node.data = o.nl; return; }
+      var key = o.nl.trim();
+      var en = I18N[key];
+      if (en) o.node.data = o.nl.replace(key, en);
+    });
+    fields.forEach(function(o){
+      o.el.placeholder = (lang === 'en' && I18N[o.nl]) ? I18N[o.nl] : o.nl;
+    });
+    document.documentElement.lang = lang;
+    document.getElementById('lang-nl').className = lang === 'nl' ? 'on' : '';
+    document.getElementById('lang-en').className = lang === 'en' ? 'on' : '';
+  }
+
+  document.getElementById('lang-nl').addEventListener('click', function(e){ e.preventDefault(); apply('nl'); });
+  document.getElementById('lang-en').addEventListener('click', function(e){ e.preventDefault(); apply('en'); });
+})();
+<\/script>
+<script>
+/* embed mode, driven by the URL hash */
+(function(){
+  var h = (location.hash || '').replace('#','');
+  if(h !== 'embed-gallery' && h !== 'embed-side') return;
+  document.documentElement.classList.add('embed', h);
+
+  if(h === 'embed-gallery'){
+    document.querySelectorAll('.mediabar button').forEach(function(t){
+      t.setAttribute('aria-selected', t.dataset.pane === 'd3' ? 'true' : 'false');
+    });
+    document.getElementById('pane-photos').hidden = true;
+    document.getElementById('pane-d3').hidden = false;
+  }
+
+  var target = h === 'embed-gallery'
+    ? document.getElementById('pane-d3')
+    : document.getElementById('side-3d');
+
+  function park(){
+    if(!target) return;
+    var y = target.getBoundingClientRect().top + window.pageYOffset - 96;
+    window.scrollTo(0, y > 0 ? y : 0);
+  }
+  park();
+  window.addEventListener('load', park);
+  [120, 400, 900, 1800].forEach(function(ms){ setTimeout(park, ms); });
+  window.addEventListener('resize', park);
+})();
+<\/script>
+</body>
+</html></script>
+
+<script>
+(function(){
+  /* ---------- example listing ---------- */
+  var store = document.getElementById('mock-listing');
+  var url = '';
+  if(store){
+    var html = store.textContent.split('<\\/script').join('</script');
+    /* the listing is served as a blob: URL, which has no directory to
+       resolve relative paths against, so make the asset URLs absolute */
+    var ABS = location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, '');
+    html = html.split('"assets/').join('"' + ABS + 'assets/');
+    url = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+
+    /* The two previews are pictures of a listing page, not places to
+       drive a model: clicking them opens the real page. So the copy fed
+       to them swaps each live splat viewer for its poster still. No
+       WebGL in the previews; the full page at #examples keeps the real
+       viewers and uses `url` above. */
+    var POSTER = 'https://s3-eu-west-1.amazonaws.com/images.playcanvas.com/splat/6270cc96/v1/xl.webp';
+    var previewUrl = URL.createObjectURL(new Blob([
+      html.replace(/<iframe[^>]*superspl\.at[^>]*><\/iframe>/g,
+        '<img src="' + POSTER + '" alt="3D-model Huize Maenstein" ' +
+        'style="position:absolute;top:0;left:0;width:100%;height:100%;' +
+        'object-fit:cover;border:0;display:block">')
+    ], {type:'text/html'}));
+
+    var frames = [].slice.call(document.querySelectorAll('iframe[data-listing]'));
+    frames.forEach(function(f){ f.src = previewUrl + '#' + f.getAttribute('data-listing'); });
+  }
+
+  /* ---------- hash router: home / legal / examples ---------- */
+  var body   = document.body;
+  var exFrm  = document.getElementById('exampleFrame');
+  var tabs   = [].slice.call(document.querySelectorAll('[data-tab]'));
+  var LEGAL  = {legal:1, terms:1, privacy:1};
+
+  function route(){
+    var h = (location.hash || '').replace('#','').split('?')[0];
+    var isEx = h.indexOf('examples') === 0;
+    var isLg = !!LEGAL[h];
+    /* main was display:none a moment ago, so the browser had nothing to
+       scroll to when the hash changed: finish the jump ourselves */
+    var wasAway = body.classList.contains('on-legal') ||
+                  body.classList.contains('on-examples');
+
+    body.classList.toggle('on-examples', isEx);
+    body.classList.toggle('on-legal', isLg);
+
+    if(isEx){
+      if(exFrm && url && !exFrm.src){ exFrm.src = url; }
+      window.scrollTo(0,0);
+      return;
+    }
+    if(isLg){
+      var el = document.getElementById(h === 'legal' ? 'terms' : h);
+      window.scrollTo(0,0);
+      if(el && h !== 'legal'){ requestAnimationFrame(function(){ el.scrollIntoView(); }); }
+      return;
+    }
+    if(wasAway){
+      var back = h && document.getElementById(h);
+      if(back){ requestAnimationFrame(function(){ back.scrollIntoView(); }); }
+      else{ window.scrollTo(0,0); }
+    }
+  }
+  route();
+  window.addEventListener('hashchange', route);
+
+  /* ---------- highlight the active legal tab ---------- */
+  var parts = [].slice.call(document.querySelectorAll('.lg__part'));
+  if(tabs.length && parts.length && 'IntersectionObserver' in window){
+    var mark = function(id){
+      tabs.forEach(function(a){ a.classList.toggle('is-on', a.getAttribute('href') === '#' + id); });
+    };
+    mark(parts[0].id);
+    var io = new IntersectionObserver(function(en){
+      en.forEach(function(e){ if(e.isIntersecting) mark(e.target.id); });
+    }, {rootMargin:'-45% 0px -50% 0px'});
+    parts.forEach(function(el){ io.observe(el); });
+  }
+})();
+</script>
+
+</body>
+</html>
